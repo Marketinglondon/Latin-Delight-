@@ -61,22 +61,13 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # 8. Forzar compileSdk 35 en paquetes de terceros
-      #    (usa plugins.withType en vez de afterEvaluate, para evitar
-      #    "Cannot run Project.afterEvaluate when the project is already evaluated"
-      #    que ocurre con el nuevo sistema de carga de plugins de Flutter)
-      - name: Force compileSdk 35 for all subprojects
-        run: |
-          cat >> android/build.gradle << 'EOF'
-
-          subprojects {
-              plugins.withType(com.android.build.gradle.BasePlugin).configureEach {
-                  project.android {
-                      compileSdkVersion 35
-                  }
-              }
-          }
-          EOF
+      # 8. (Eliminado) Ya no se fuerza compileSdk en subproyectos:
+      #    con AGP 8.3.0 y las versiones actuales de los paquetes de
+      #    terceros, cada plugin declara un compileSdk ya compatible
+      #    con el compileSdk 35 del proyecto principal. Forzarlo aquí
+      #    causaba "It is too late to set compileSdk" porque AGP 8.x
+      #    lee ese valor antes de que cualquier hook (afterEvaluate o
+      #    plugins.withType) llegue a tiempo.
 
       # 9. Generar ícono de la app (debe ir después de crear android/
       #    y antes de compilar, si no el ícono no se aplica)
