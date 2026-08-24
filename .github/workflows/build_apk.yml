@@ -26,9 +26,10 @@ jobs:
           flutter-version: '3.24.0'
           channel: 'stable'
 
-      # 3. Regenerar carpeta android
+      # 3. Regenerar carpeta android (nombre de proyecto explícito para
+      #    evitar el error "Latin-Delight- is not a valid Dart package name")
       - name: Create android platform folder
-        run: flutter create --platforms=android .
+        run: flutter create --platforms=android --project-name=latin_delight_app .
 
       # 4. Ajustar versiones de AGP / Kotlin / Gradle
       - name: Set Gradle wrapper version
