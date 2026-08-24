@@ -172,7 +172,7 @@
     </div>
 
     <label>Categoría</label>
-    <select id="f-categoria">
+    <select id="f-categoria" onchange="actualizarOcasionesDisponibles()">
       <option>Desayuno sorpresa</option>
       <option>Frutas expresiva</option>
       <option>Rosas</option>
@@ -181,15 +181,7 @@
     </select>
 
     <label>Ocasión</label>
-    <select id="f-ocasion">
-      <option>Cumpleaños</option>
-      <option>Aniversario</option>
-      <option>Amor y amistad</option>
-      <option>Get well soon</option>
-      <option>Nuevo bebé</option>
-      <option>Graduación</option>
-      <option>Sin ocasión especial</option>
-    </select>
+    <select id="f-ocasion"></select>
 
     <label>Presentación / Tamaño</label>
     <select id="f-presentacion">
@@ -260,6 +252,28 @@ const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOU
 let mercadoActivo = 'UK';
 let cestasCache = [];
 let fotosFormulario = [];
+
+// Ocasiones específicas por categoría — deben coincidir EXACTO con las
+// mismas listas usadas en index.html
+const CATEGORIA_OCASIONES = {
+  'Desayuno sorpresa': ['Cumpleaños', 'Aniversarios', 'Baby Shower', 'Apoyo emocional', 'Fecha de calendario'],
+  'Frutas expresiva': ['Bandeja de frutas', 'Frutas y rosas', 'Fresas con chocolate', 'Fresas con rosas', 'Fresas con tortas'],
+  'Rosas': ['Caja de rosas', 'Buquet de rosas', 'Rosas con chocolate ferrero', 'Rosas con peluche'],
+  'Detalles': ['Globos y peluches', 'Orquídeas y globos helio', 'Tabla de quesos'],
+  'Adicionales': ['Sin ocasión especial'],
+};
+
+function actualizarOcasionesDisponibles(ocasionAConservar) {
+  const categoria = document.getElementById('f-categoria').value;
+  const select = document.getElementById('f-ocasion');
+  const ocasiones = CATEGORIA_OCASIONES[categoria] || ['Sin ocasión especial'];
+
+  select.innerHTML = ocasiones.map(oc => `<option>${oc}</option>`).join('');
+
+  if (ocasionAConservar && ocasiones.includes(ocasionAConservar)) {
+    select.value = ocasionAConservar;
+  }
+}
 
 async function verificarAcceso() {
   const val = document.getElementById('access-code').value;
@@ -441,6 +455,8 @@ function abrirFormulario() {
   fotosFormulario = [];
   renderPhotoPicker();
   alCambiarPaisForm();
+  document.getElementById('f-categoria').value = 'Desayuno sorpresa';
+  actualizarOcasionesDisponibles();
   document.getElementById('form-modal').classList.add('active');
 }
 
@@ -453,7 +469,7 @@ function editarCesta(id) {
   document.getElementById('f-nombre').value = c.nombre;
   document.getElementById('f-nombreEs').value = c.nombreEs;
   document.getElementById('f-categoria').value = c.categoria;
-  document.getElementById('f-ocasion').value = c.ocasion;
+  actualizarOcasionesDisponibles(c.ocasion);
   document.getElementById('f-presentacion').value = c.presentacion;
   document.getElementById('f-descripcion').value = c.descripcion;
   document.getElementById('f-descripcionEs').value = c.descripcionEs;
@@ -608,4 +624,4 @@ async function traducir(textoEn) {
 }
 </script>
 </body>
-  </html>
+</html>
