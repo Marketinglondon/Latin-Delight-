@@ -6,7 +6,7 @@
 <title>Latin Delight Ltd.</title>
 <meta property="og:title" content="Latin Delight Ltd.">
 <meta property="og:description" content="Capture a smile on your love one's face">
-<meta property="og:image" content="https://marketinglondon.github.io/Latin-Delight-/assets/icon/hero-full.png">
+<meta property="og:image" content="https://marketinglondon.github.io/Latin-Delight-/assets/icon/Logo.png">
 <meta property="og:url" content="https://marketinglondon.github.io/Latin-Delight-/">
 <meta property="og:type" content="website">
 <link rel="icon" href="assets/icon/Icon.png">
@@ -38,15 +38,12 @@
     position: sticky; top: 0; z-index: 100;
   }
   header .brand { display: flex; align-items: center; gap: 10px; }
-  header img { width: 40px; }
+  header img { width: 70px; }
   header h1 { font-size: 18px; color: var(--morado-oscuro); }
   header .actions button {
     background: none; border: 1px solid var(--turquesa); color: var(--turquesa);
     border-radius: 20px; padding: 6px 12px; margin-left: 6px; cursor: pointer;
   }
-
-  .hero { width: 100%; max-height: 260px; overflow: hidden; }
-  .hero img { width: 100%; object-fit: cover; }
 
   .location-banner {
     background: var(--morado-claro); text-align: center; padding: 8px 12px; font-size: 14px; color: var(--morado-oscuro);
@@ -66,7 +63,6 @@
   .tab-content { display: none; padding: 16px; }
   .tab-content.active { display: block; }
 
-  /* Lista desplegable de ocasiones por categoría */
   .occasion-list { display: flex; flex-direction: column; gap: 10px; }
   .occasion-list button {
     padding: 14px 16px; border-radius: 12px; border: 1px solid var(--morado-claro);
@@ -241,10 +237,6 @@
   </div>
 </header>
 
-<div class="hero">
-  <img src="assets/icon/hero-full.png" alt="Latin Delight baskets">
-</div>
-
 <div class="location-banner">
   <span id="location-text">🇬🇧 London - England</span>
   <span class="switch-link" id="switch-market-link" onclick="cambiarMercadoManual()"></span>
@@ -334,8 +326,6 @@ const IDIOMAS_POR_MERCADO = { UK: ['en', 'es'], CO: ['es'] };
 const IDIOMA_DEFECTO = { UK: 'en', CO: 'es' };
 const SIMBOLO_MONEDA = { UK: '£', CO: '$' };
 
-// Ocasiones específicas por categoría. Si una categoría no está aquí
-// (ej. "Adicionales"), se muestran las cestas directamente sin lista.
 const CATEGORIA_OCASIONES = {
   'Desayuno sorpresa': ['Cumpleaños', 'Aniversarios', 'Baby Shower', 'Apoyo emocional', 'Fecha de calendario'],
   'Frutas expresiva': ['Bandeja de frutas', 'Frutas y rosas', 'Fresas con chocolate', 'Fresas con rosas', 'Fresas con tortas'],
@@ -435,9 +425,6 @@ async function cargarCestas() {
   }
 }
 
-// -----------------------------------------------------------------------
-// NAVEGACIÓN: categoría → lista de ocasiones → grilla filtrada
-// -----------------------------------------------------------------------
 function mostrarCategoria(cat) {
   categoriaActiva = cat;
   ocasionActiva = null;
@@ -449,7 +436,6 @@ function mostrarCategoria(cat) {
     document.getElementById('occasion-list-wrapper').style.display = 'block';
     document.getElementById('grid-wrapper').style.display = 'none';
   } else {
-    // Categoría sin ocasiones específicas (ej. Adicionales): mostrar todo directo
     document.getElementById('occasion-list-wrapper').style.display = 'none';
     document.getElementById('grid-wrapper').style.display = 'block';
     document.getElementById('back-to-occasions').style.display = 'none';
@@ -481,9 +467,6 @@ function volverAOcasiones() {
   document.getElementById('grid-wrapper').style.display = 'none';
 }
 
-// -----------------------------------------------------------------------
-// GRID DE CESTAS — filtrada por categoría (+ ocasión si aplica)
-// -----------------------------------------------------------------------
 function renderGrid() {
   const grid = document.getElementById('grid');
   let filtradas = cestas.filter(c => c.categoria === categoriaActiva);
@@ -499,7 +482,7 @@ function renderGrid() {
 
   grid.innerHTML = filtradas.map(c => `
     <div class="card" onclick="abrirModal('${c.id}')">
-      <img src="${c.fotos[0] || 'assets/icon/hero-full.png'}" alt="${texto(c.nombre, c.nombreEs)}">
+      <img src="${c.fotos[0] || 'assets/icon/Logo.png'}" alt="${texto(c.nombre, c.nombreEs)}">
       ${c.fotos.length > 1 ? `<span class="styles-badge">${c.fotos.length} styles</span>` : ''}
       <div class="info">
         <h3>${texto(c.nombre, c.nombreEs)}</h3>
@@ -522,7 +505,7 @@ function abrirModal(id) {
   if (!c) return;
   cestaActual = c;
 
-  carruselFotos = c.fotos.length ? c.fotos : ['assets/icon/hero-full.png'];
+  carruselFotos = c.fotos.length ? c.fotos : ['assets/icon/Logo.png'];
   carruselIndex = 0;
   estiloSeleccionado = null;
   renderCarrusel();
