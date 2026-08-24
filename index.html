@@ -152,16 +152,27 @@
   .carousel-dots .dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(0,0,0,0.3); cursor: pointer; }
   .carousel-dots .dot.active { background: var(--amarillo); }
 
+  /* Selector de imagen: texto + botones numerados + compartir */
+  .image-picker-label {
+    padding: 10px 16px 4px 16px; font-size: 13px; font-weight: bold; color: var(--morado-oscuro);
+  }
+  .image-picker {
+    display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px 10px 16px;
+  }
+  .image-picker button {
+    width: 36px; height: 36px; border-radius: 8px; border: 2px solid var(--morado-claro);
+    background: white; color: var(--morado-oscuro); font-weight: bold; font-size: 14px; cursor: pointer;
+  }
+  .image-picker button.selected {
+    background: var(--morado-oscuro); color: white; border-color: var(--morado-oscuro);
+  }
   .carousel-actions {
-    display: flex; gap: 8px; padding: 10px 16px 0 16px;
+    display: flex; gap: 8px; padding: 0 16px 10px 16px;
   }
   .carousel-actions button {
     flex: 1; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--morado-claro);
     background: white; color: var(--morado-oscuro); font-size: 12px; cursor: pointer;
     display: flex; align-items: center; justify-content: center; gap: 4px;
-  }
-  .carousel-actions button.selected {
-    background: var(--morado-oscuro); color: white; border-color: var(--morado-oscuro);
   }
 
   #lightbox {
@@ -265,8 +276,10 @@
       <div class="carousel-dots" id="carousel-dots"></div>
     </div>
 
+    <div class="image-picker-label" id="image-picker-label" style="display:none">Choose your favourite image</div>
+    <div class="image-picker" id="image-picker"></div>
+
     <div class="carousel-actions">
-      <button id="btn-select-style" onclick="alternarSeleccionEstilo()">⭐ <span id="select-style-label">I like this style</span></button>
       <button onclick="compartirFotoActual()">📤 Share this photo</button>
     </div>
 
@@ -438,7 +451,7 @@ let cestaActual = null;
 let carruselFotos = [];
 let carruselIndex = 0;
 let touchStartX = 0;
-let estiloSeleccionado = null;
+let estiloSeleccionado = null; // índice de la imagen elegida (o null si no eligió)
 let itemsContenido = [];
 
 function abrirModal(id) {
@@ -450,7 +463,7 @@ function abrirModal(id) {
   carruselIndex = 0;
   estiloSeleccionado = null;
   renderCarrusel();
-  actualizarBotonSeleccionEstilo();
+  renderImagePicker();
 
   document.getElementById('modal-nombre').textContent = texto(c.nombre, c.nombreEs);
   document.getElementById('modal-precio').textContent = `${SIMBOLO_MONEDA[mercado]}${c.precioVenta.toFixed(2)}`;
@@ -504,8 +517,6 @@ function renderCarrusel() {
   const mostrarControles = carruselFotos.length > 1;
   controles.forEach(b => b.style.display = mostrarControles ? 'flex' : 'none');
   dots.style.display = mostrarControles ? 'flex' : 'none';
-
-  actualizarBotonSeleccionEstilo();
 }
 
 function carruselMover(delta) {
@@ -529,19 +540,30 @@ function carruselTouchEnd(e) {
   }
 }
 
-function alternarSeleccionEstilo() {
-  estiloSeleccionado = (estiloSeleccionado === carruselIndex) ? null : carruselIndex;
-  actualizarBotonSeleccionEstilo();
+// -----------------------------------------------------------------------
+// SELECTOR DE IMAGEN: "Choose your favourite image" + botones numerados
+// -----------------------------------------------------------------------
+function renderImagePicker() {
+  const label = document.getElementById('image-picker-label');
+  const cont = document.getElementById('image-picker');
+
+  if (carruselFotos.length <= 1) {
+    label.style.display = 'none';
+    cont.innerHTML = '';
+    return;
+  }
+
+  label.style.display = 'block';
+  cont.innerHTML = carruselFotos.map((_, i) => `
+    <button class="${estiloSeleccionado === i ? 'selected' : ''}" onclick="elegirImagen(${i})">${i + 1}</button>
+  `).join('');
 }
 
-function actualizarBotonSeleccionEstilo() {
-  const btn = document.getElementById('btn-select-style');
-  const label = document.getElementById('select-style-label');
-  const marcado = estiloSeleccionado === carruselIndex;
-  btn.classList.toggle('selected', marcado);
-  label.textContent = marcado
-    ? (idioma === 'es' ? 'Estilo seleccionado' : 'Style selected')
-    : (idioma === 'es' ? 'Me gusta este estilo' : 'I like this style');
+function elegirImagen(index) {
+  estiloSeleccionado = (estiloSeleccionado === index) ? null : index;
+  carruselIndex = index;
+  renderCarrusel();
+  renderImagePicker();
 }
 
 function abrirLightbox(index) {
@@ -583,6 +605,9 @@ function cerrarModal() {
   document.getElementById('modal').classList.remove('active');
 }
 
+// -----------------------------------------------------------------------
+// PEDIDO POR WHATSAPP — incluye imagen elegida (número + enlace) y checklist
+// -----------------------------------------------------------------------
 function enviarPedidoWhatsApp() {
   if (!cestaActual) return;
   const nombre = texto(cestaActual.nombre, cestaActual.nombreEs);
@@ -592,9 +617,11 @@ function enviarPedidoWhatsApp() {
   lineas.push(idioma === 'es' ? `¡Hola! Me interesa: ${nombre}` : `Hi! I am interested in: ${nombre}`);
 
   if (estiloSeleccionado !== null) {
+    const urlImagen = carruselFotos[estiloSeleccionado];
     lineas.push(idioma === 'es'
-      ? `Estilo elegido: foto ${estiloSeleccionado + 1} de ${carruselFotos.length}`
-      : `Chosen style: photo ${estiloSeleccionado + 1} of ${carruselFotos.length}`);
+      ? `Imagen elegida: ${estiloSeleccionado + 1} de ${carruselFotos.length}`
+      : `Chosen image: ${estiloSeleccionado + 1} of ${carruselFotos.length}`);
+    lineas.push(idioma === 'es' ? `Enlace de la imagen: ${urlImagen}` : `Image link: ${urlImagen}`);
   }
 
   if (itemsContenido.length > 0) {
