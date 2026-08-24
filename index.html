@@ -117,15 +117,16 @@
   #modal .subtabs button.active { background: var(--morado-oscuro); color: white; }
   #modal .subtab-content {
     display: none; font-size: 14px; line-height: 1.6;
-    white-space: pre-line; /* respeta los saltos de línea escritos en admin.html */
+    white-space: pre-line;
   }
   #modal .subtab-content.active { display: block; }
   #modal .whatsapp-btn {
-    display: block; text-align: center; margin-top: 16px; padding: 12px;
+    display: block; width: 100%; text-align: center; margin-top: 16px; padding: 12px;
     background: #25D366; color: white; border-radius: 10px; text-decoration: none; font-weight: bold;
+    border: none; font-size: 15px; cursor: pointer;
   }
 
-  /* Carrusel: ahora muestra la foto COMPLETA sin recortar (object-fit: contain) */
+  /* Carrusel: foto completa sin recortar */
   .carousel {
     position: relative; width: 100%; height: 280px; overflow: hidden;
     background: #f2f2f2; border-radius: 14px 14px 0 0;
@@ -133,7 +134,7 @@
   }
   .carousel-track { display: flex; height: 100%; width: 100%; transition: transform 0.3s ease; }
   .carousel-track img {
-    width: 100%; height: 100%; object-fit: contain; flex-shrink: 0; background: #f2f2f2;
+    width: 100%; height: 100%; object-fit: contain; flex-shrink: 0; background: #f2f2f2; cursor: zoom-in;
   }
   .carousel-btn {
     position: absolute; top: 50%; transform: translateY(-50%);
@@ -149,6 +150,51 @@
   }
   .carousel-dots .dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(0,0,0,0.3); cursor: pointer; }
   .carousel-dots .dot.active { background: var(--amarillo); }
+
+  /* Barra de acciones bajo el carrusel: compartir foto + seleccionar estilo */
+  .carousel-actions {
+    display: flex; gap: 8px; padding: 10px 16px 0 16px;
+  }
+  .carousel-actions button {
+    flex: 1; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--morado-claro);
+    background: white; color: var(--morado-oscuro); font-size: 12px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+  }
+  .carousel-actions button.selected {
+    background: var(--morado-oscuro); color: white; border-color: var(--morado-oscuro);
+  }
+
+  /* Lightbox de zoom */
+  #lightbox {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.92);
+    z-index: 800; align-items: center; justify-content: center; padding: 20px;
+  }
+  #lightbox.active { display: flex; }
+  #lightbox img { max-width: 100%; max-height: 80vh; object-fit: contain; }
+  #lightbox .lightbox-bar {
+    position: absolute; top: 0; left: 0; right: 0; padding: 16px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  #lightbox .lightbox-bar button {
+    background: rgba(255,255,255,0.15); color: white; border: none; border-radius: 50%;
+    width: 40px; height: 40px; font-size: 18px; cursor: pointer;
+  }
+
+  /* Checklist de contenido: cada línea con checkbox marcable/desmarcable */
+  .content-checklist { list-style: none; }
+  .content-checklist li {
+    display: flex; align-items: flex-start; gap: 8px; padding: 6px 0;
+    border-bottom: 1px solid #f0f0f0; cursor: pointer; user-select: none;
+  }
+  .content-checklist li:last-child { border-bottom: none; }
+  .content-checklist .check-icon {
+    flex-shrink: 0; width: 20px; height: 20px; border-radius: 5px;
+    border: 2px solid var(--turquesa); display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: white; margin-top: 1px;
+  }
+  .content-checklist li.checked .check-icon { background: var(--turquesa); }
+  .content-checklist li.unchecked .check-icon { background: white; border-color: #ccc; }
+  .content-checklist li.unchecked span.item-text { color: #aaa; text-decoration: line-through; }
 
   footer { text-align: center; padding: 20px; color: #999; font-size: 12px; }
 </style>
@@ -210,7 +256,7 @@
   <a class="whatsapp-btn" id="contact-whatsapp" href="#" target="_blank">WhatsApp Us</a>
 </div>
 
-<!-- Modal: orden invertido, Contenido primero y Descripción después -->
+<!-- Modal de detalle -->
 <div id="modal">
   <div class="content">
     <button class="close" onclick="cerrarModal()">&times;</button>
@@ -222,6 +268,11 @@
       <div class="carousel-dots" id="carousel-dots"></div>
     </div>
 
+    <div class="carousel-actions">
+      <button id="btn-select-style" onclick="alternarSeleccionEstilo()">⭐ <span id="select-style-label">I like this style</span></button>
+      <button onclick="compartirFotoActual()">📤 Share this photo</button>
+    </div>
+
     <div class="body">
       <h2 id="modal-nombre"></h2>
       <div class="price" id="modal-precio"></div>
@@ -229,11 +280,20 @@
         <button class="subtab-btn active" data-sub="incl">What's Included</button>
         <button class="subtab-btn" data-sub="desc">Description</button>
       </div>
-      <div class="subtab-content active" id="sub-incl"></div>
+      <ul class="content-checklist subtab-content active" id="sub-incl"></ul>
       <div class="subtab-content" id="sub-desc"></div>
-      <a class="whatsapp-btn" id="modal-whatsapp" href="#" target="_blank">Order on WhatsApp</a>
+      <button class="whatsapp-btn" onclick="enviarPedidoWhatsApp()">Order on WhatsApp</button>
     </div>
   </div>
+</div>
+
+<!-- Lightbox de zoom -->
+<div id="lightbox" onclick="cerrarLightboxSiFondo(event)">
+  <div class="lightbox-bar">
+    <button onclick="event.stopPropagation(); compartirFotoActual()">📤</button>
+    <button onclick="event.stopPropagation(); cerrarLightbox()">✕</button>
+  </div>
+  <img id="lightbox-img" src="" alt="">
 </div>
 
 <footer>&copy; <span id="year"></span> Latin Delight Ltd.</footer>
@@ -307,9 +367,6 @@ function toggleIdioma() {
   renderGrid();
 }
 
-// -----------------------------------------------------------------------
-// TEXTO SEGÚN IDIOMA (cae a inglés si el campo *Es está vacío)
-// -----------------------------------------------------------------------
 function texto(en, es) {
   if (idioma === 'es' && es && es.trim() !== '') return es;
   return en || '';
@@ -397,40 +454,72 @@ function renderGrid() {
 }
 
 // -----------------------------------------------------------------------
-// MODAL DE DETALLE + CARRUSEL DE FOTOS (fotos completas, sin recortar)
+// ESTADO DEL MODAL ABIERTO
 // -----------------------------------------------------------------------
+let cestaActual = null;
 let carruselFotos = [];
 let carruselIndex = 0;
 let touchStartX = 0;
+let estiloSeleccionado = null; // índice de la foto que el cliente marcó como favorita
+let itemsContenido = [];        // [{texto, marcado}] por cada línea de "contenido"
 
 function abrirModal(id) {
   const c = cestas.find(x => x.id === id);
   if (!c) return;
+  cestaActual = c;
 
   carruselFotos = c.fotos.length ? c.fotos : ['assets/icon/hero-full.png'];
   carruselIndex = 0;
+  estiloSeleccionado = null;
   renderCarrusel();
+  actualizarBotonSeleccionEstilo();
 
   document.getElementById('modal-nombre').textContent = texto(c.nombre, c.nombreEs);
   document.getElementById('modal-precio').textContent = `${SIMBOLO_MONEDA[mercado]}${c.precioVenta.toFixed(2)}`;
-  // Orden invertido: Contenido primero, Descripción después
-  document.getElementById('sub-incl').textContent = texto(c.contenido, c.contenidoEs);
-  document.getElementById('sub-desc').textContent = texto(c.descripcion, c.descripcionEs);
 
-  const numero = NUMEROS[mercado];
-  const nombreMsg = encodeURIComponent(texto(c.nombre, c.nombreEs));
-  document.getElementById('modal-whatsapp').href =
-    `https://wa.me/${numero}?text=${encodeURIComponent('Hi! I am interested in: ')}${nombreMsg}`;
+  const textoContenido = texto(c.contenido, c.contenidoEs);
+  itemsContenido = textoContenido
+    .split('\n')
+    .map(l => l.trim())
+    .filter(l => l.length > 0)
+    .map(l => ({ texto: l, marcado: true }));
+  renderChecklistContenido();
+
+  document.getElementById('sub-desc').textContent = texto(c.descripcion, c.descripcionEs);
 
   document.getElementById('modal').classList.add('active');
 }
 
+function renderChecklistContenido() {
+  const ul = document.getElementById('sub-incl');
+  if (itemsContenido.length === 0) {
+    ul.innerHTML = '<li style="border:none; color:#999;">—</li>';
+    return;
+  }
+  ul.innerHTML = itemsContenido.map((item, i) => `
+    <li class="${item.marcado ? 'checked' : 'unchecked'}" onclick="alternarItemContenido(${i})">
+      <span class="check-icon">${item.marcado ? '✓' : ''}</span>
+      <span class="item-text">${item.texto}</span>
+    </li>
+  `).join('');
+}
+
+function alternarItemContenido(index) {
+  itemsContenido[index].marcado = !itemsContenido[index].marcado;
+  renderChecklistContenido();
+}
+
+// -----------------------------------------------------------------------
+// CARRUSEL
+// -----------------------------------------------------------------------
 function renderCarrusel() {
   const track = document.getElementById('carousel-track');
   const dots = document.getElementById('carousel-dots');
   const controles = document.querySelectorAll('.carousel-btn');
 
-  track.innerHTML = carruselFotos.map(url => `<img src="${url}" alt="">`).join('');
+  track.innerHTML = carruselFotos.map((url, i) =>
+    `<img src="${url}" alt="" onclick="abrirLightbox(${i})">`
+  ).join('');
   track.style.transform = `translateX(-${carruselIndex * 100}%)`;
 
   dots.innerHTML = carruselFotos.map((_, i) =>
@@ -440,6 +529,8 @@ function renderCarrusel() {
   const mostrarControles = carruselFotos.length > 1;
   controles.forEach(b => b.style.display = mostrarControles ? 'flex' : 'none');
   dots.style.display = mostrarControles ? 'flex' : 'none';
+
+  actualizarBotonSeleccionEstilo();
 }
 
 function carruselMover(delta) {
@@ -463,8 +554,95 @@ function carruselTouchEnd(e) {
   }
 }
 
+// -----------------------------------------------------------------------
+// SELECCIÓN DE ESTILO FAVORITO (foto actual del carrusel)
+// -----------------------------------------------------------------------
+function alternarSeleccionEstilo() {
+  estiloSeleccionado = (estiloSeleccionado === carruselIndex) ? null : carruselIndex;
+  actualizarBotonSeleccionEstilo();
+}
+
+function actualizarBotonSeleccionEstilo() {
+  const btn = document.getElementById('btn-select-style');
+  const label = document.getElementById('select-style-label');
+  const marcado = estiloSeleccionado === carruselIndex;
+  btn.classList.toggle('selected', marcado);
+  label.textContent = marcado
+    ? (idioma === 'es' ? 'Estilo seleccionado' : 'Style selected')
+    : (idioma === 'es' ? 'Me gusta este estilo' : 'I like this style');
+}
+
+// -----------------------------------------------------------------------
+// LIGHTBOX (zoom de foto completa)
+// -----------------------------------------------------------------------
+function abrirLightbox(index) {
+  carruselIndex = index;
+  document.getElementById('lightbox-img').src = carruselFotos[index];
+  document.getElementById('lightbox').classList.add('active');
+}
+
+function cerrarLightbox() {
+  document.getElementById('lightbox').classList.remove('active');
+}
+
+function cerrarLightboxSiFondo(e) {
+  if (e.target.id === 'lightbox') cerrarLightbox();
+}
+
+// -----------------------------------------------------------------------
+// COMPARTIR UNA FOTO ESPECÍFICA
+// -----------------------------------------------------------------------
+async function compartirFotoActual() {
+  const url = carruselFotos[carruselIndex];
+  const nombre = cestaActual ? texto(cestaActual.nombre, cestaActual.nombreEs) : 'Latin Delight';
+  const textoCompartir = idioma === 'es'
+    ? `Mira este estilo de "${nombre}" en Latin Delight: ${url}`
+    : `Check out this style of "${nombre}" from Latin Delight: ${url}`;
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: nombre, text: textoCompartir, url: url });
+    } catch (e) { /* el usuario canceló, no hacer nada */ }
+  } else {
+    try {
+      await navigator.clipboard.writeText(textoCompartir);
+      alert(idioma === 'es' ? 'Enlace de la foto copiado' : 'Photo link copied');
+    } catch (e) {
+      alert(url);
+    }
+  }
+}
+
 function cerrarModal() {
   document.getElementById('modal').classList.remove('active');
+}
+
+// -----------------------------------------------------------------------
+// PEDIDO POR WHATSAPP — incluye estilo elegido y checklist marcado/❌
+// -----------------------------------------------------------------------
+function enviarPedidoWhatsApp() {
+  if (!cestaActual) return;
+  const nombre = texto(cestaActual.nombre, cestaActual.nombreEs);
+  const numero = NUMEROS[mercado];
+
+  const lineas = [];
+  lineas.push(idioma === 'es' ? `¡Hola! Me interesa: ${nombre}` : `Hi! I am interested in: ${nombre}`);
+
+  if (estiloSeleccionado !== null) {
+    lineas.push(idioma === 'es'
+      ? `Estilo elegido: foto ${estiloSeleccionado + 1} de ${carruselFotos.length}`
+      : `Chosen style: photo ${estiloSeleccionado + 1} of ${carruselFotos.length}`);
+  }
+
+  if (itemsContenido.length > 0) {
+    lineas.push(idioma === 'es' ? 'Contenido:' : "What's included:");
+    itemsContenido.forEach(item => {
+      lineas.push(`${item.marcado ? '✓' : '❌'} ${item.texto}`);
+    });
+  }
+
+  const mensaje = encodeURIComponent(lineas.join('\n'));
+  window.open(`https://wa.me/${numero}?text=${mensaje}`, '_blank');
 }
 
 // Subtabs dentro del modal
