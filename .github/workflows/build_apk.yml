@@ -1,0 +1,93 @@
+name: Build APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'lib/**'
+      - 'pubspec.yaml'
+      - 'assets/**'
+      - '.github/workflows/build_apk.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Descargar código
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. Instalar Flutter
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+
+      # 3. Regenerar carpeta android
+      - name: Create android platform folder
+        run: flutter create --platforms=android .
+
+      # 4. Ajustar versiones de AGP / Kotlin / Gradle
+      - name: Set Gradle wrapper version
+        run: |
+          sed -i 's/distributionUrl=.*/distributionUrl=https\\:\/\/services.gradle.org\/distributions\/gradle-8.4-all.zip/' android/gradle/wrapper/gradle-wrapper.properties
+
+      - name: Set AGP and Kotlin versions
+        run: |
+          sed -i "s/id 'com.android.application' version '.*'/id 'com.android.application' version '8.3.0'/" android/settings.gradle
+          sed -i "s/id 'org.jetbrains.kotlin.android' version '.*'/id 'org.jetbrains.kotlin.android' version '1.9.22'/" android/settings.gradle
+
+      # 5. Activar plugin de Google Services + copiar google-services.json
+      - name: Add Google Services plugin
+        run: |
+          sed -i "/id 'org.jetbrains.kotlin.android'/a\\    id 'com.google.gms.google-services' version '4.4.1' apply false" android/settings.gradle
+          echo "apply plugin: 'com.google.gms.google-services'" >> android/app/build.gradle
+
+      - name: Copy google-services.json
+        run: cp firebase-config/google-services.json android/app/google-services.json
+
+      # 6. Ajustar compileSdk / NDK
+      - name: Set compileSdk and NDK version
+        run: |
+          sed -i 's/compileSdk flutter.compileSdkVersion/compileSdk 35/' android/app/build.gradle
+          sed -i 's/ndkVersion flutter.ndkVersion/ndkVersion "26.3.11579264"/' android/app/build.gradle
+
+      # 7. flutter pub get
+      - name: Install dependencies
+        run: flutter pub get
+
+      # 8. Forzar compileSdk 35 en paquetes de terceros
+      - name: Force compileSdk 35 for all subprojects
+        run: |
+          cat >> android/build.gradle << 'EOF'
+
+          subprojects {
+              afterEvaluate { project ->
+                  if (project.hasProperty('android')) {
+                      project.android {
+                          compileSdkVersion 35
+                      }
+                  }
+              }
+          }
+          EOF
+
+      # 9. Generar ícono de la app (debe ir después de crear android/
+      #    y antes de compilar, si no el ícono no se aplica)
+      - name: Generate launcher icon
+        run: dart run flutter_launcher_icons
+
+      # 10. Compilar APK
+      - name: Build APK
+        run: flutter build apk --release
+
+      # 11. Subir como artifact descargable
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: latin-delight-app-release
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30
