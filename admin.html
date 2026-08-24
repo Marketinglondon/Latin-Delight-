@@ -242,9 +242,14 @@ async function verificarAcceso() {
     document.getElementById('gate-error').style.display = 'block';
     return;
   }
-  await firebase.auth().signInAnonymously();
-  document.getElementById('gate').style.display = 'none';
-  cargarCestas();
+  try {
+    await firebase.auth().signInAnonymously();
+    document.getElementById('gate').style.display = 'none';
+    cargarCestas();
+  } catch (e) {
+    alert('Error de autenticación: ' + e.message);
+    console.error(e);
+  }
 }
 
 async function obtenerHeaders() {
@@ -453,4 +458,93 @@ async function guardarCesta() {
   try {
     if (id) {
       await fetch(`${FIRESTORE_URL}/${id}`, {
-        m
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ fields: toFirestoreFields(cesta) }),
+      });
+    } else {
+      await fetch(FIRESTORE_URL, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ fields: toFirestoreFields({ ...cesta, fechaCreacion: new Date().toISOString() }) }),
+      });
+    }
+    cerrarFormulario();
+    await cargarCestas();
+  } catch (e) {
+    alert('Error guardando: ' + e.message);
+  }
+}
+
+// -----------------------------------------------------------------------
+// ELIMINAR
+// -----------------------------------------------------------------------
+async function eliminarCesta(id) {
+  if (!confirm('¿Eliminar esta cesta?')) return;
+  const headers = await obtenerHeaders();
+  await fetch(`${FIRESTORE_URL}/${id}`, { method: 'DELETE', headers });
+  await cargarCestas();
+}
+
+// -----------------------------------------------------------------------
+// TRADUCIR TODOS (solo cestas con pais='UK')
+// -----------------------------------------------------------------------
+async function traducirTodos() {
+  const status = document.getElementById('status');
+  const headers = await obtenerHeaders();
+  const pendientes = cestasCache.filter(c =>
+    c.pais === 'UK' &&
+    ((c.nombre && !c.nombreEs) || (c.descripcion && !c.descripcionEs) || (c.contenido && !c.contenidoEs))
+  );
+
+  if (pendientes.length === 0) {
+    status.textContent = 'No hay cestas de UK pendientes por traducir.';
+    return;
+  }
+
+  status.textContent = `Traduciendo ${pendientes.length} cesta(s)...`;
+
+  for (const c of pendientes) {
+    const camposActualizar = {};
+    const maskPaths = [];
+
+    if (c.nombre && !c.nombreEs) {
+      camposActualizar.nombreEs = { stringValue: await traducir(c.nombre) };
+      maskPaths.push('nombreEs');
+    }
+    if (c.descripcion && !c.descripcionEs) {
+      camposActualizar.descripcionEs = { stringValue: await traducir(c.descripcion) };
+      maskPaths.push('descripcionEs');
+    }
+    if (c.contenido && !c.contenidoEs) {
+      camposActualizar.contenidoEs = { stringValue: await traducir(c.contenido) };
+      maskPaths.push('contenidoEs');
+    }
+
+    if (maskPaths.length) {
+      const maskQuery = maskPaths.map(p => `updateMask.fieldPaths=${p}`).join('&');
+      await fetch(`${FIRESTORE_URL}/${c.id}?${maskQuery}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ fields: camposActualizar }),
+      });
+    }
+  }
+
+  status.textContent = 'Traducción completada.';
+  await cargarCestas();
+}
+
+async function traducir(textoEn) {
+  try {
+    const url = `${MY_MEMORY_ENDPOINT}?q=${encodeURIComponent(textoEn)}&langpair=en|es`;
+    const res = await fetch(url);
+    const data = await res.json();
+    return data?.responseData?.translatedText || textoEn;
+  } catch (e) {
+    return textoEn;
+  }
+}
+</script>
+</body>
+</html>
