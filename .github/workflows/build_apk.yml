@@ -43,7 +43,6 @@ jobs:
           sed -i 's/id "org.jetbrains.kotlin.android" version ".*" apply false/id "org.jetbrains.kotlin.android" version "1.9.22" apply false/' android/settings.gradle
 
       # 5. Activar plugin de Google Services + copiar google-services.json
-      #    (mismo fix: comillas dobles en settings.gradle)
       - name: Add Google Services plugin
         run: |
           sed -i '/id "org.jetbrains.kotlin.android"/a\    id "com.google.gms.google-services" version "4.5.0" apply false' android/settings.gradle
@@ -63,16 +62,17 @@ jobs:
         run: flutter pub get
 
       # 8. Forzar compileSdk 35 en paquetes de terceros
+      #    (usa plugins.withType en vez de afterEvaluate, para evitar
+      #    "Cannot run Project.afterEvaluate when the project is already evaluated"
+      #    que ocurre con el nuevo sistema de carga de plugins de Flutter)
       - name: Force compileSdk 35 for all subprojects
         run: |
           cat >> android/build.gradle << 'EOF'
 
           subprojects {
-              afterEvaluate { project ->
-                  if (project.hasProperty('android')) {
-                      project.android {
-                          compileSdkVersion 35
-                      }
+              plugins.withType(com.android.build.gradle.BasePlugin).configureEach {
+                  project.android {
+                      compileSdkVersion 35
                   }
               }
           }
@@ -95,8 +95,14 @@ jobs:
           path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 30
 
-      # 12. Verificación: mostrar settings.gradle final en el log,
-      #     útil para depurar rápido si algo vuelve a fallar
-      - name: Debug settings.gradle (solo si falla algo más adelante)
+      # 12. Verificación: mostrar settings.gradle y build.gradle finales
+      #     en el log, útil para depurar rápido si algo vuelve a fallar
+      - name: Debug gradle files (solo si falla algo más adelante)
         if: failure()
-        run: cat android/settings.gradle
+        run: |
+          echo "----- settings.gradle -----"
+          cat android/settings.gradle
+          echo "----- android/build.gradle -----"
+          cat android/build.gradle
+          echo "----- app/build.gradle -----"
+          cat android/app/build.gradle
