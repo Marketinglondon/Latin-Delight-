@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "274211837224",
+    "project_id": "latin-delight",
+    "storage_bucket": "latin-delight.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:274211837224:android:6063d00d589683b7642c1d",
+        "android_client_info": {
+          "package_name": "com.latindelight.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBXxIiaSSw7fDR_X1ILRHoEY6CAHhxrHoA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
