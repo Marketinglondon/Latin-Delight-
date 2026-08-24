@@ -1,0 +1,32 @@
+name: latin_delight_app
+description: App de administración de cestas de regalo para Latin Delight Ltd.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  firebase_core: ^2.27.0
+  cloud_firestore: ^4.15.0
+  firebase_auth: ^4.17.0
+  http: ^1.2.0
+  image_picker: ^1.0.7
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/Logo.png"
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/icon/
