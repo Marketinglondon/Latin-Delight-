@@ -88,6 +88,29 @@
   #es-fields.visible { display: block; }
   .helper { font-size: 11px; color: #888; margin-top: 2px; }
   #status { font-size: 13px; margin-top: 10px; color: var(--turquesa); }
+
+  /* Subida de fotos: galería + botón */
+  .photo-picker {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;
+  }
+  .photo-thumb {
+    position: relative; width: 72px; height: 72px; border-radius: 8px; overflow: hidden;
+  }
+  .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .photo-thumb .remove-btn {
+    position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.6); color: white;
+    border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .photo-thumb.uploading {
+    display: flex; align-items: center; justify-content: center;
+    background: #f0f0f0; font-size: 10px; color: #888; text-align: center;
+  }
+  .add-photo-btn {
+    width: 72px; height: 72px; border-radius: 8px; border: 2px dashed var(--morado-claro);
+    background: #faf5fc; color: var(--morado-oscuro); font-size: 26px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
 </style>
 </head>
 <body>
@@ -202,9 +225,10 @@
     <label>Costo proveedor (privado)</label>
     <input type="number" step="0.01" id="f-costo">
 
-    <label>URLs de fotos (una por línea — sube primero a Cloudinary y pega el link aquí)</label>
-    <textarea id="f-fotos" placeholder="https://res.cloudinary.com/..."></textarea>
-    <div class="helper">Para subir fotos: ve a tu dashboard de Cloudinary → Media Library → sube la imagen → copia el link "secure_url".</div>
+    <label>Fotos (varios estilos = mismo precio, se muestran como carrusel)</label>
+    <div class="photo-picker" id="photo-picker"></div>
+    <input type="file" id="photo-input" accept="image/*" multiple style="display:none" onchange="subirFotosSeleccionadas(event)">
+    <div class="helper">Toca el botón "+" para tomar una foto o elegir de tu galería. Puedes agregar varias.</div>
 
     <div class="actions">
       <button class="btn-cancel" onclick="cerrarFormulario()">Cancelar</button>
@@ -230,8 +254,14 @@ firebase.initializeApp(firebaseConfig);
 
 const MY_MEMORY_ENDPOINT = 'https://api.mymemory.translated.net/get';
 
+// Cloudinary — subida directa sin backend (unsigned upload preset)
+const CLOUDINARY_CLOUD_NAME = 'iggcl810';
+const CLOUDINARY_UPLOAD_PRESET = 'latin_delight_unsigned';
+const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
+
 let mercadoActivo = 'UK';
 let cestasCache = [];
+let fotosFormulario = []; // URLs ya subidas de la cesta en edición/creación
 
 // -----------------------------------------------------------------------
 // ACCESO (filtro básico) + AUTENTICACIÓN ANÓNIMA FIREBASE
@@ -346,6 +376,65 @@ function renderTabla() {
 }
 
 // -----------------------------------------------------------------------
+// SUBIDA DE FOTOS A CLOUDINARY (directo desde galería/cámara)
+// -----------------------------------------------------------------------
+function renderPhotoPicker() {
+  const cont = document.getElementById('photo-picker');
+  const thumbs = fotosFormulario.map((url, i) => `
+    <div class="photo-thumb">
+      <img src="${url}">
+      <button class="remove-btn" onclick="quitarFoto(${i})">×</button>
+    </div>
+  `).join('');
+
+  cont.innerHTML = thumbs + `
+    <button type="button" class="add-photo-btn" onclick="document.getElementById('photo-input').click()">+</button>
+  `;
+}
+
+function quitarFoto(index) {
+  fotosFormulario.splice(index, 1);
+  renderPhotoPicker();
+}
+
+async function subirFotosSeleccionadas(event) {
+  const archivos = Array.from(event.target.files || []);
+  if (!archivos.length) return;
+
+  const cont = document.getElementById('photo-picker');
+
+  for (const archivo of archivos) {
+    // Muestra un placeholder "Subiendo..." mientras termina
+    const placeholderId = 'ph-' + Date.now() + Math.random().toString(36).slice(2);
+    cont.insertAdjacentHTML('beforeend', `
+      <div class="photo-thumb uploading" id="${placeholderId}">Subiendo...</div>
+    `);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', archivo);
+      formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+      const res = await fetch(CLOUDINARY_UPLOAD_URL, { method: 'POST', body: formData });
+      const data = await res.json();
+
+      if (data.secure_url) {
+        fotosFormulario.push(data.secure_url);
+      } else {
+        alert('No se pudo subir una foto: ' + (data.error?.message || 'error desconocido'));
+      }
+    } catch (e) {
+      alert('Error subiendo foto: ' + e.message);
+    }
+
+    document.getElementById(placeholderId)?.remove();
+    renderPhotoPicker();
+  }
+
+  event.target.value = ''; // permite volver a elegir el mismo archivo después
+}
+
+// -----------------------------------------------------------------------
 // FORMULARIO — abrir / cerrar / mostrar campos ES según mercado
 // -----------------------------------------------------------------------
 function alCambiarPaisForm() {
@@ -362,12 +451,14 @@ function alCambiarPaisForm() {
 function abrirFormulario() {
   document.getElementById('form-title').textContent = 'Nueva cesta';
   document.getElementById('f-id').value = '';
-  ['f-nombre','f-nombreEs','f-descripcion','f-descripcionEs','f-contenido','f-contenidoEs','f-fotos'].forEach(id => document.getElementById(id).value = '');
+  ['f-nombre','f-nombreEs','f-descripcion','f-descripcionEs','f-contenido','f-contenidoEs'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('f-precio').value = '';
   document.getElementById('f-costo').value = '';
   document.getElementById('f-pais').value = mercadoActivo;
   document.getElementById('f-stock').checked = true;
   ['f-globos','f-flores','f-accesorio','f-comida','f-bebida'].forEach(id => document.getElementById(id).checked = false);
+  fotosFormulario = [];
+  renderPhotoPicker();
   alCambiarPaisForm();
   document.getElementById('form-modal').classList.add('active');
 }
@@ -395,7 +486,8 @@ function editarCesta(id) {
   document.getElementById('f-stock').checked = c.enStock;
   document.getElementById('f-precio').value = c.precioVenta;
   document.getElementById('f-costo').value = c.costoProveedor;
-  document.getElementById('f-fotos').value = c.fotos.join('\n');
+  fotosFormulario = [...c.fotos];
+  renderPhotoPicker();
   alCambiarPaisForm();
   document.getElementById('form-modal').classList.add('active');
 }
@@ -449,7 +541,7 @@ async function guardarCesta() {
     costoProveedor: parseFloat(document.getElementById('f-costo').value) || 0,
     precioVenta: parseFloat(document.getElementById('f-precio').value) || 0,
     enStock: document.getElementById('f-stock').checked,
-    fotos: document.getElementById('f-fotos').value.split('\n').map(s => s.trim()).filter(Boolean),
+    fotos: fotosFormulario,
   };
 
   const id = document.getElementById('f-id').value;
