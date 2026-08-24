@@ -115,16 +115,26 @@
     background: white; color: var(--morado-oscuro); font-size: 12px; cursor: pointer;
   }
   #modal .subtabs button.active { background: var(--morado-oscuro); color: white; }
-  #modal .subtab-content { display: none; font-size: 14px; line-height: 1.5; }
+  #modal .subtab-content {
+    display: none; font-size: 14px; line-height: 1.6;
+    white-space: pre-line; /* respeta los saltos de línea escritos en admin.html */
+  }
   #modal .subtab-content.active { display: block; }
   #modal .whatsapp-btn {
     display: block; text-align: center; margin-top: 16px; padding: 12px;
     background: #25D366; color: white; border-radius: 10px; text-decoration: none; font-weight: bold;
   }
 
-  .carousel { position: relative; width: 100%; height: 220px; overflow: hidden; background: #f2f2f2; border-radius: 14px 14px 0 0; }
-  .carousel-track { display: flex; height: 100%; transition: transform 0.3s ease; }
-  .carousel-track img { width: 100%; height: 220px; object-fit: cover; flex-shrink: 0; }
+  /* Carrusel: ahora muestra la foto COMPLETA sin recortar (object-fit: contain) */
+  .carousel {
+    position: relative; width: 100%; height: 280px; overflow: hidden;
+    background: #f2f2f2; border-radius: 14px 14px 0 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .carousel-track { display: flex; height: 100%; width: 100%; transition: transform 0.3s ease; }
+  .carousel-track img {
+    width: 100%; height: 100%; object-fit: contain; flex-shrink: 0; background: #f2f2f2;
+  }
   .carousel-btn {
     position: absolute; top: 50%; transform: translateY(-50%);
     background: rgba(255,255,255,0.85); border: none; border-radius: 50%;
@@ -137,7 +147,7 @@
     position: absolute; bottom: 8px; left: 0; right: 0;
     display: flex; justify-content: center; gap: 6px;
   }
-  .carousel-dots .dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.6); cursor: pointer; }
+  .carousel-dots .dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(0,0,0,0.3); cursor: pointer; }
   .carousel-dots .dot.active { background: var(--amarillo); }
 
   footer { text-align: center; padding: 20px; color: #999; font-size: 12px; }
@@ -200,6 +210,7 @@
   <a class="whatsapp-btn" id="contact-whatsapp" href="#" target="_blank">WhatsApp Us</a>
 </div>
 
+<!-- Modal: orden invertido, Contenido primero y Descripción después -->
 <div id="modal">
   <div class="content">
     <button class="close" onclick="cerrarModal()">&times;</button>
@@ -215,11 +226,11 @@
       <h2 id="modal-nombre"></h2>
       <div class="price" id="modal-precio"></div>
       <div class="subtabs">
-        <button class="subtab-btn active" data-sub="desc">Description</button>
-        <button class="subtab-btn" data-sub="incl">What's Included</button>
+        <button class="subtab-btn active" data-sub="incl">What's Included</button>
+        <button class="subtab-btn" data-sub="desc">Description</button>
       </div>
-      <div class="subtab-content active" id="sub-desc"></div>
-      <div class="subtab-content" id="sub-incl"></div>
+      <div class="subtab-content active" id="sub-incl"></div>
+      <div class="subtab-content" id="sub-desc"></div>
       <a class="whatsapp-btn" id="modal-whatsapp" href="#" target="_blank">Order on WhatsApp</a>
     </div>
   </div>
@@ -264,7 +275,6 @@ async function detectarMercado() {
   }
 }
 
-// Cambia manualmente entre UK y CO, guarda la elección y recarga los datos
 function cambiarMercadoManual() {
   mercado = mercado === 'UK' ? 'CO' : 'UK';
   localStorage.setItem('ld_mercado', mercado);
@@ -387,7 +397,7 @@ function renderGrid() {
 }
 
 // -----------------------------------------------------------------------
-// MODAL DE DETALLE + CARRUSEL DE FOTOS
+// MODAL DE DETALLE + CARRUSEL DE FOTOS (fotos completas, sin recortar)
 // -----------------------------------------------------------------------
 let carruselFotos = [];
 let carruselIndex = 0;
@@ -403,8 +413,9 @@ function abrirModal(id) {
 
   document.getElementById('modal-nombre').textContent = texto(c.nombre, c.nombreEs);
   document.getElementById('modal-precio').textContent = `${SIMBOLO_MONEDA[mercado]}${c.precioVenta.toFixed(2)}`;
-  document.getElementById('sub-desc').textContent = texto(c.descripcion, c.descripcionEs);
+  // Orden invertido: Contenido primero, Descripción después
   document.getElementById('sub-incl').textContent = texto(c.contenido, c.contenidoEs);
+  document.getElementById('sub-desc').textContent = texto(c.descripcion, c.descripcionEs);
 
   const numero = NUMEROS[mercado];
   const nombreMsg = encodeURIComponent(texto(c.nombre, c.nombreEs));
