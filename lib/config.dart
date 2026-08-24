@@ -23,8 +23,8 @@ class AppConfig {
 
   // ---------------------------------------------------------------------
   // MERCADOS — dos inventarios independientes con distinto contenido,
-  // presentaciones y moneda. NO es el mismo producto con precio dual
-  // (a diferencia de Kefify): cada cesta pertenece a un solo país.
+  // presentaciones y moneda. NO es el mismo producto con precio dual:
+  // cada cesta pertenece a un solo país.
   // ---------------------------------------------------------------------
   static const String mercadoUK = 'UK';
   static const String mercadoCO = 'CO';
@@ -53,10 +53,9 @@ class AppConfig {
   // ---------------------------------------------------------------------
   // CONTACTO — un número de WhatsApp por mercado
   // ---------------------------------------------------------------------
-  // Reemplazar con los números reales, formato internacional sin '+' ni espacios
   static const Map<String, String> numeroWhatsappPorMercado = {
-    'UK': '44XXXXXXXXXX',
-    'CO': '57XXXXXXXXXX',
+    'UK': '447446830987',
+    'CO': '573226082281',
   };
 
   // ---------------------------------------------------------------------
@@ -69,15 +68,13 @@ class AppConfig {
   // FIREBASE / FIRESTORE
   // ---------------------------------------------------------------------
   static const String firestoreProjectId = 'TU_PROJECT_ID';
-  static const String firestoreCollection = 'cestas'; // antes "productos" en Kefify
+  static const String firestoreCollection = 'cestas';
   // Cada documento en "cestas" incluye el campo `pais` ('UK' o 'CO')
   // para saber a qué inventario/catálogo pertenece.
 
   // ---------------------------------------------------------------------
   // CATEGORÍAS (valor fijo interno — deben coincidir EXACTAMENTE,
   // mayúsculas y espacios incluidos, entre la app y el catálogo web).
-  // Se pueden compartir entre mercados o definir listas propias por país
-  // si el contenido es muy distinto — ajustar aquí si es necesario.
   // ---------------------------------------------------------------------
   static const List<String> categorias = [
     'Desayuno',
@@ -113,8 +110,7 @@ class AppConfig {
 
   // ---------------------------------------------------------------------
   // TRADUCCIÓN AUTOMÁTICA (MyMemory API — gratuita)
-  // Solo se usa para cestas con pais='UK'; Colombia es monolingüe y no
-  // necesita traducción.
+  // Solo se usa para cestas con pais='UK'; Colombia es monolingüe.
   // ---------------------------------------------------------------------
   static const String myMemoryEndpoint = 'https://api.mymemory.translated.net/get';
   static const String parDeIdiomas = 'en|es';
