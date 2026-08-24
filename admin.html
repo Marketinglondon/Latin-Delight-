@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Latin Delight — Admin</title>
+<link rel="icon" href="assets/icon/Icon.png">
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+<style>
+  :root {
+    --morado-oscuro: #7A3E8C;
+    --morado-claro: #D9A8E5;
+    --amarillo: #F4CE1E;
+    --turquesa: #1E96AC;
+    --blanco: #FFFFFF;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #F7F4F9; color: #333; }
+
+  /* Access gate */
+  #gate {
+    position: fixed; inset: 0; background: var(--morado-oscuro);
+    display: flex; align-items: center; justify-content: center; z-index: 999;
+  }
+  #gate .box {
+    background: white; padding: 30px; border-radius: 14px; text-align: center; width: 90%; max-width: 340px;
+  }
+  #gate img { width: 90px; margin-bottom: 12px; }
+  #gate input {
+    width: 100%; padding: 12px; margin: 12px 0; border: 1px solid #ccc; border-radius: 8px; font-size: 16px;
+  }
+  #gate button {
+    width: 100%; padding: 12px; background: var(--amarillo); border: none; border-radius: 8px;
+    font-weight: bold; cursor: pointer; font-size: 15px;
+  }
+  #gate .error { color: #c0392b; font-size: 13px; margin-top: 8px; display: none; }
+
+  header {
+    background: var(--morado-oscuro); color: white; padding: 14px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  header h1 { font-size: 18px; }
+  header .market-switch { display: flex; gap: 6px; }
+  header .market-switch button {
+    padding: 6px 12px; border-radius: 16px; border: 1px solid white; background: none; color: white; cursor: pointer;
+  }
+  header .market-switch button.active { background: var(--amarillo); color: #333; border-color: var(--amarillo); }
+
+  main { max-width: 900px; margin: 0 auto; padding: 16px; }
+
+  .toolbar { display: flex; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+  .toolbar button {
+    padding: 10px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;
+  }
+  .btn-primary { background: var(--turquesa); color: white; }
+  .btn-secondary { background: var(--morado-claro); color: var(--morado-oscuro); }
+
+  table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; }
+  th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; font-size: 14px; }
+  th { background: var(--turquesa); color: white; }
+  td img { width: 44px; height: 44px; object-fit: cover; border-radius: 6px; }
+  td button { border: none; background: none; cursor: pointer; font-size: 16px; margin-right: 6px; }
+
+  /* Form modal */
+  #form-modal {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    align-items: flex-start; justify-content: center; z-index: 500; overflow-y: auto; padding: 20px 10px;
+  }
+  #form-modal.active { display: flex; }
+  #form-modal .box {
+    background: white; border-radius: 12px; padding: 20px; max-width: 560px; width: 100%; margin-top: 20px;
+  }
+  #form-modal h2 { color: var(--morado-oscuro); margin-bottom: 16px; }
+  #form-modal label { display: block; margin-top: 12px; font-size: 13px; font-weight: bold; color: #555; }
+  #form-modal input, #form-modal select, #form-modal textarea {
+    width: 100%; padding: 9px; border: 1px solid #ccc; border-radius: 6px; margin-top: 4px; font-size: 14px;
+  }
+  #form-modal textarea { resize: vertical; min-height: 60px; }
+  #form-modal .checkboxes { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+  #form-modal .checkboxes label { display: flex; align-items: center; gap: 4px; font-weight: normal; }
+  #form-modal .checkboxes input { width: auto; margin: 0; }
+  #form-modal .actions { display: flex; gap: 10px; margin-top: 20px; }
+  #form-modal .actions button { flex: 1; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+  .btn-cancel { background: #eee; }
+  .btn-save { background: var(--amarillo); }
+  #es-fields { display: none; border-left: 3px solid var(--morado-claro); padding-left: 10px; margin-top: 10px; }
+  #es-fields.visible { display: block; }
+  .helper { font-size: 11px; color: #888; margin-top: 2px; }
+  #status { font-size: 13px; margin-top: 10px; color: var(--turquesa); }
+</style>
+</head>
+<body>
+
+<!-- Access gate -->
+<div id="gate">
+  <div class="box">
+    <img src="assets/icon/Logo.png" alt="Latin Delight">
+    <h2>Latin Delight — Admin</h2>
+    <input type="password" id="access-code" placeholder="Código de acceso">
+    <button onclick="verificarAcceso()">Entrar</button>
+    <div class="error" id="gate-error">Código incorrecto</div>
+  </div>
+</div>
+
+<header>
+  <h1>Latin Delight — Panel de administración</h1>
+  <div class="market-switch">
+    <button id="btn-uk" class="active" onclick="cambiarMercado('UK')">Reino Unido</button>
+    <button id="btn-co" onclick="cambiarMercado('CO')">Colombia</button>
+  </div>
+</header>
+
+<main>
+  <div class="toolbar">
+    <button class="btn-primary" onclick="abrirFormulario()">+ Nueva cesta</button>
+    <button class="btn-secondary" onclick="traducirTodos()">Traducir todos (solo UK)</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>Foto</th><th>Nombre</th><th>Categoría</th><th>Precio</th><th>Stock</th><th></th></tr>
+    </thead>
+    <tbody id="tabla-body"></tbody>
+  </table>
+  <div id="status"></div>
+</main>
+
+<!-- Form modal -->
+<div id="form-modal">
+  <div class="box">
+    <h2 id="form-title">Nueva cesta</h2>
+    <input type="hidden" id="f-id">
+
+    <label>Mercado</label>
+    <select id="f-pais" onchange="alCambiarPaisForm()">
+      <option value="UK">Reino Unido (bilingüe)</option>
+      <option value="CO">Colombia (solo español)</option>
+    </select>
+
+    <label id="label-nombre">Nombre</label>
+    <input type="text" id="f-nombre" onblur="autotraducirCampo('f-nombre','f-nombreEs')">
+
+    <div id="es-fields">
+      <label>Nombre (español) — autocompletado, editable</label>
+      <input type="text" id="f-nombreEs">
+    </div>
+
+    <label>Categoría</label>
+    <select id="f-categoria">
+      <option>Desayuno</option>
+      <option>Snacks</option>
+      <option>Comidas</option>
+      <option>Bebidas</option>
+      <option>Cestas con globos</option>
+      <option>Cestas con flores</option>
+      <option>Accesorios</option>
+    </select>
+
+    <label>Ocasión</label>
+    <select id="f-ocasion">
+      <option>Cumpleaños</option>
+      <option>Aniversario</option>
+      <option>Amor y amistad</option>
+      <option>Get well soon</option>
+      <option>Nuevo bebé</option>
+      <option>Graduación</option>
+      <option>Sin ocasión especial</option>
+    </select>
+
+    <label>Presentación / Tamaño</label>
+    <select id="f-presentacion">
+      <option>Pequeña</option>
+      <option>Mediana</option>
+      <option>Grande</option>
+    </select>
+
+    <label id="label-descripcion">Descripción</label>
+    <textarea id="f-descripcion" onblur="autotraducirCampo('f-descripcion','f-descripcionEs')"></textarea>
+    <div id="es-fields-desc" class="es-only" style="display:none">
+      <label>Descripción (español) — autocompletado, editable</label>
+      <textarea id="f-descripcionEs"></textarea>
+    </div>
+
+    <label id="label-contenido">Contenido (qué incluye)</label>
+    <textarea id="f-contenido" onblur="autotraducirCampo('f-contenido','f-contenidoEs')"></textarea>
+    <div id="es-fields-contenido" class="es-only" style="display:none">
+      <label>Contenido (español) — autocompletado, editable</label>
+      <textarea id="f-contenidoEs"></textarea>
+    </div>
+
+    <div class="checkboxes">
+      <label><input type="checkbox" id="f-globos"> Globos</label>
+      <label><input type="checkbox" id="f-flores"> Flores</label>
+      <label><input type="checkbox" id="f-accesorio"> Accesorio</label>
+      <label><input type="checkbox" id="f-comida"> Comida</label>
+      <label><input type="checkbox" id="f-bebida"> Bebida</label>
+      <label><input type="checkbox" id="f-stock" checked> En stock</label>
+    </div>
+
+    <label id="label-precio">Precio de venta (£)</label>
+    <input type="number" step="0.01" id="f-precio">
+
+    <label>Costo proveedor (privado)</label>
+    <input type="number" step="0.01" id="f-costo">
+
+    <label>URLs de fotos (una por línea — sube primero a Cloudinary y pega el link aquí)</label>
+    <textarea id="f-fotos" placeholder="https://res.cloudinary.com/..."></textarea>
+    <div class="helper">Para subir fotos: ve a tu dashboard de Cloudinary → Media Library → sube la imagen → copia el link "secure_url".</div>
+
+    <div class="actions">
+      <button class="btn-cancel" onclick="cerrarFormulario()">Cancelar</button>
+      <button class="btn-save" onclick="guardarCesta()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// -----------------------------------------------------------------------
+// CONFIG
+// -----------------------------------------------------------------------
+const CODIGO_ACCESO = 'latindelight2026'; // filtro básico, no es contraseña real segura
+const PROJECT_ID = 'TU_PROJECT_ID';
+const FIRESTORE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/cestas`;
+
+const firebaseConfig = {
+  apiKey: "TU_API_KEY",
+  authDomain: "TU_PROJECT_ID.firebaseapp.com",
+  projectId: "TU_PROJECT_ID",
+};
+firebase.initializeApp(firebaseConfig);
+
+const MY_MEMORY_ENDPOINT = 'https://api.mymemory.translated.net/get';
+
+let mercadoActivo = 'UK';
+let cestasCache = [];
+
+// -----------------------------------------------------------------------
+// ACCESO (filtro básico) + AUTENTICACIÓN ANÓNIMA FIREBASE
+// -----------------------------------------------------------------------
+async function verificarAcceso() {
+  const val = document.getElementById('access-code').value;
+  if (val !== CODIGO_ACCESO) {
+    document.getElementById('gate-error').style.display = 'block';
+    return;
+  }
+  await firebase.auth().signInAnonymously();
+  document.getElementById('gate').style.display = 'none';
+  cargarCestas();
+}
+
+async function obtenerHeaders() {
+  const user = firebase.auth().currentUser;
+  if (!user) return { 'Content-Type': 'application/json' };
+  const token = await user.getIdToken();
+  return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+}
+
+// -----------------------------------------------------------------------
+// MERCADO ACTIVO (filtra la tabla, no el catálogo público)
+// -----------------------------------------------------------------------
+function cambiarMercado(m) {
+  mercadoActivo = m;
+  document.getElementById('btn-uk').classList.toggle('active', m === 'UK');
+  document.getElementById('btn-co').classList.toggle('active', m === 'CO');
+  renderTabla();
+}
+
+// -----------------------------------------------------------------------
+// FIRESTORE REST — helpers de parseo / serialización
+// -----------------------------------------------------------------------
+function parseDoc(doc) {
+  const f = doc.fields || {};
+  const get = (k) => f[k] ? (f[k].stringValue ?? '') : '';
+  const getNum = (k) => f[k] ? parseFloat(f[k].doubleValue ?? f[k].integerValue ?? 0) : 0;
+  const getBool = (k) => f[k] ? f[k].booleanValue === true : false;
+  const getArr = (k) => f[k]?.arrayValue?.values ? f[k].arrayValue.values.map(v => v.stringValue) : [];
+
+  return {
+    id: doc.name.split('/').pop(),
+    nombre: get('nombre'), nombreEs: get('nombreEs'),
+    categoria: get('categoria'), ocasion: get('ocasion'), presentacion: get('presentacion'),
+    descripcion: get('descripcion'), descripcionEs: get('descripcionEs'),
+    contenido: get('contenido'), contenidoEs: get('contenidoEs'),
+    incluyeGlobos: getBool('incluyeGlobos'), incluyeFlores: getBool('incluyeFlores'),
+    incluyeAccesorio: getBool('incluyeAccesorio'), incluyeComida: getBool('incluyeComida'),
+    incluyeBebida: getBool('incluyeBebida'),
+    pais: get('pais') || 'UK',
+    costoProveedor: getNum('costoProveedor'), precioVenta: getNum('precioVenta'),
+    enStock: getBool('enStock'), fotos: getArr('fotos'),
+  };
+}
+
+function toFirestoreFields(c) {
+  const str = (v) => ({ stringValue: v || '' });
+  const num = (v) => ({ doubleValue: parseFloat(v) || 0 });
+  const bool = (v) => ({ booleanValue: !!v });
+  const arr = (list) => ({ arrayValue: { values: list.map(v => ({ stringValue: v })) } });
+
+  return {
+    nombre: str(c.nombre), nombreEs: str(c.nombreEs),
+    categoria: str(c.categoria), ocasion: str(c.ocasion), presentacion: str(c.presentacion),
+    descripcion: str(c.descripcion), descripcionEs: str(c.descripcionEs),
+    contenido: str(c.contenido), contenidoEs: str(c.contenidoEs),
+    incluyeGlobos: bool(c.incluyeGlobos), incluyeFlores: bool(c.incluyeFlores),
+    incluyeAccesorio: bool(c.incluyeAccesorio), incluyeComida: bool(c.incluyeComida),
+    incluyeBebida: bool(c.incluyeBebida),
+    pais: str(c.pais),
+    costoProveedor: num(c.costoProveedor), precioVenta: num(c.precioVenta),
+    enStock: bool(c.enStock), fotos: arr(c.fotos),
+    fechaCreacion: str(c.fechaCreacion || new Date().toISOString()),
+  };
+}
+
+// -----------------------------------------------------------------------
+// CARGA Y RENDER DE TABLA
+// -----------------------------------------------------------------------
+async function cargarCestas() {
+  const res = await fetch(FIRESTORE_URL);
+  const data = await res.json();
+  cestasCache = (data.documents || []).map(parseDoc);
+  renderTabla();
+}
+
+function renderTabla() {
+  const body = document.getElementById('tabla-body');
+  const filtradas = cestasCache.filter(c => c.pais === mercadoActivo);
+  const simbolo = mercadoActivo === 'CO' ? '$' : '£';
+
+  body.innerHTML = filtradas.map(c => `
+    <tr>
+      <td>${c.fotos[0] ? `<img src="${c.fotos[0]}">` : '—'}</td>
+      <td>${c.nombre}</td>
+      <td>${c.categoria}</td>
+      <td>${simbolo}${c.precioVenta.toFixed(2)}</td>
+      <td>${c.enStock ? '✅' : '❌'}</td>
+      <td>
+        <button onclick="editarCesta('${c.id}')">✏️</button>
+        <button onclick="eliminarCesta('${c.id}')">🗑️</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+// -----------------------------------------------------------------------
+// FORMULARIO — abrir / cerrar / mostrar campos ES según mercado
+// -----------------------------------------------------------------------
+function alCambiarPaisForm() {
+  const esUK = document.getElementById('f-pais').value === 'UK';
+  document.getElementById('es-fields').classList.toggle('visible', esUK);
+  document.querySelectorAll('.es-only').forEach(el => el.style.display = esUK ? 'block' : 'none');
+  const simbolo = document.getElementById('f-pais').value === 'CO' ? '$' : '£';
+  document.getElementById('label-precio').textContent = `Precio de venta (${simbolo})`;
+  document.getElementById('label-nombre').textContent = esUK ? 'Nombre (inglés)' : 'Nombre';
+  document.getElementById('label-descripcion').textContent = esUK ? 'Descripción (inglés)' : 'Descripción';
+  document.getElementById('label-contenido').textContent = esUK ? "Contenido / What's included (inglés)" : 'Contenido (qué incluye)';
+}
+
+function abrirFormulario() {
+  document.getElementById('form-title').textContent = 'Nueva cesta';
+  document.getElementById('f-id').value = '';
+  ['f-nombre','f-nombreEs','f-descripcion','f-descripcionEs','f-contenido','f-contenidoEs','f-fotos'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f-precio').value = '';
+  document.getElementById('f-costo').value = '';
+  document.getElementById('f-pais').value = mercadoActivo;
+  document.getElementById('f-stock').checked = true;
+  ['f-globos','f-flores','f-accesorio','f-comida','f-bebida'].forEach(id => document.getElementById(id).checked = false);
+  alCambiarPaisForm();
+  document.getElementById('form-modal').classList.add('active');
+}
+
+function editarCesta(id) {
+  const c = cestasCache.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('form-title').textContent = 'Editar cesta';
+  document.getElementById('f-id').value = c.id;
+  document.getElementById('f-pais').value = c.pais;
+  document.getElementById('f-nombre').value = c.nombre;
+  document.getElementById('f-nombreEs').value = c.nombreEs;
+  document.getElementById('f-categoria').value = c.categoria;
+  document.getElementById('f-ocasion').value = c.ocasion;
+  document.getElementById('f-presentacion').value = c.presentacion;
+  document.getElementById('f-descripcion').value = c.descripcion;
+  document.getElementById('f-descripcionEs').value = c.descripcionEs;
+  document.getElementById('f-contenido').value = c.contenido;
+  document.getElementById('f-contenidoEs').value = c.contenidoEs;
+  document.getElementById('f-globos').checked = c.incluyeGlobos;
+  document.getElementById('f-flores').checked = c.incluyeFlores;
+  document.getElementById('f-accesorio').checked = c.incluyeAccesorio;
+  document.getElementById('f-comida').checked = c.incluyeComida;
+  document.getElementById('f-bebida').checked = c.incluyeBebida;
+  document.getElementById('f-stock').checked = c.enStock;
+  document.getElementById('f-precio').value = c.precioVenta;
+  document.getElementById('f-costo').value = c.costoProveedor;
+  document.getElementById('f-fotos').value = c.fotos.join('\n');
+  alCambiarPaisForm();
+  document.getElementById('form-modal').classList.add('active');
+}
+
+function cerrarFormulario() {
+  document.getElementById('form-modal').classList.remove('active');
+}
+
+// -----------------------------------------------------------------------
+// AUTOTRADUCCIÓN (solo si el mercado del formulario es UK)
+// -----------------------------------------------------------------------
+async function autotraducirCampo(idOrigen, idDestino) {
+  if (document.getElementById('f-pais').value !== 'UK') return;
+  const destino = document.getElementById(idDestino);
+  const origen = document.getElementById(idOrigen).value.trim();
+  if (!origen || destino.value.trim()) return;
+
+  try {
+    const url = `${MY_MEMORY_ENDPOINT}?q=${encodeURIComponent(origen)}&langpair=en|es`;
+    const res = await fetch(url);
+    const data = await res.json();
+    destino.value = data?.responseData?.translatedText || origen;
+  } catch (e) {
+    destino.value = origen;
+  }
+}
+
+// -----------------------------------------------------------------------
+// GUARDAR (crear o actualizar)
+// -----------------------------------------------------------------------
+async function guardarCesta() {
+  const pais = document.getElementById('f-pais').value;
+  const esUK = pais === 'UK';
+
+  const cesta = {
+    nombre: document.getElementById('f-nombre').value.trim(),
+    nombreEs: esUK ? document.getElementById('f-nombreEs').value.trim() : document.getElementById('f-nombre').value.trim(),
+    categoria: document.getElementById('f-categoria').value,
+    ocasion: document.getElementById('f-ocasion').value,
+    presentacion: document.getElementById('f-presentacion').value,
+    descripcion: document.getElementById('f-descripcion').value.trim(),
+    descripcionEs: esUK ? document.getElementById('f-descripcionEs').value.trim() : document.getElementById('f-descripcion').value.trim(),
+    contenido: document.getElementById('f-contenido').value.trim(),
+    contenidoEs: esUK ? document.getElementById('f-contenidoEs').value.trim() : document.getElementById('f-contenido').value.trim(),
+    incluyeGlobos: document.getElementById('f-globos').checked,
+    incluyeFlores: document.getElementById('f-flores').checked,
+    incluyeAccesorio: document.getElementById('f-accesorio').checked,
+    incluyeComida: document.getElementById('f-comida').checked,
+    incluyeBebida: document.getElementById('f-bebida').checked,
+    pais: pais,
+    costoProveedor: parseFloat(document.getElementById('f-costo').value) || 0,
+    precioVenta: parseFloat(document.getElementById('f-precio').value) || 0,
+    enStock: document.getElementById('f-stock').checked,
+    fotos: document.getElementById('f-fotos').value.split('\n').map(s => s.trim()).filter(Boolean),
+  };
+
+  const id = document.getElementById('f-id').value;
+  const headers = await obtenerHeaders();
+
+  try {
+    if (id) {
+      await fetch(`${FIRESTORE_URL}/${id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ fields: toFirestoreFields(cesta) }),
+      });
+    } else {
+      await fetch(FIRESTORE_URL, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ fields: toFirestoreFields({ ...cesta, fechaCreacion: new Date().toISOString() }) }),
+      });
+    }
+    cerrarFormulario();
+    await cargarCestas();
+  } catch (e) {
+    alert('Error guardando: ' + e.message);
+  }
+}
+
+// -----------------------------------------------------------------------
+// ELIMINAR
+// -----------------------------------------------------------------------
+async function eliminarCesta(id) {
+  if (!confirm('¿Eliminar esta cesta?')) return;
+  const headers = await obtenerHeaders();
+  await fetch(`${FIRESTORE_URL}/${id}`, { method: 'DELETE', headers });
+  await cargarCestas();
+}
+
+// -----------------------------------------------------------------------
+// TRADUCIR TODOS (solo cestas con pais='UK')
+// -----------------------------------------------------------------------
+async function traducirTodos() {
+  const status = document.getElementById('status');
+  const headers = await obtenerHeaders();
+  const pendientes = cestasCache.filter(c =>
+    c.pais === 'UK' &&
+    ((c.nombre && !c.nombreEs) || (c.descripcion && !c.descripcionEs) || (c.contenido && !c.contenidoEs))
+  );
+
+  if (pendientes.length === 0) {
+    status.textContent = 'No hay cestas de UK pendientes por traducir.';
+    return;
+  }
+
+  status.textContent = `Traduciendo ${pendientes.length} cesta(s)...`;
+
+  for (const c of pendientes) {
+    const camposActualizar = {};
+    const maskPaths = [];
+
+    if (c.nombre && !c.nombreEs) {
+      camposActualizar.nombreEs = { stringValue: await traducir(c.nombre) };
+      maskPaths.push('nombreEs');
+    }
+    if (c.descripcion && !c.descripcionEs) {
+      camposActualizar.descripcionEs = { stringValue: await traducir(c.descripcion) };
+      maskPaths.push('descripcionEs');
+    }
+    if (c.contenido && !c.contenidoEs) {
+      camposActualizar.contenidoEs = { stringValue: await traducir(c.contenido) };
+      maskPaths.push('contenidoEs');
+    }
+
+    if (maskPaths.length) {
+      const maskQuery = maskPaths.map(p => `updateMask.fieldPaths=${p}`).join('&');
+      await fetch(`${FIRESTORE_URL}/${c.id}?${maskQuery}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ fields: camposActualizar }),
+      });
+    }
+  }
+
+  status.textContent = 'Traducción completada.';
+  await cargarCestas();
+}
+
+async function traducir(textoEn) {
+  try {
+    const url = `${MY_MEMORY_ENDPOINT}?q=${encodeURIComponent(textoEn)}&langpair=en|es`;
+    const res = await fetch(url);
+    const data = await res.json();
+    return data?.responseData?.translatedText || textoEn;
+  } catch (e) {
+    return textoEn;
+  }
+}
+</script>
+</body>
+</html>
