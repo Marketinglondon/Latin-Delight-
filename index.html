@@ -58,24 +58,19 @@
 
   .tabs { display: flex; overflow-x: auto; background: var(--turquesa); }
   .tabs button {
-    flex: none; padding: 12px 18px; background: none; border: none; color: white;
-    font-size: 14px; cursor: pointer; opacity: 0.8;
+    flex: none; padding: 12px 16px; background: none; border: none; color: white;
+    font-size: 13px; cursor: pointer; opacity: 0.8; white-space: nowrap;
   }
   .tabs button.active { opacity: 1; border-bottom: 3px solid var(--amarillo); font-weight: bold; }
 
   .tab-content { display: none; padding: 16px; }
   .tab-content.active { display: block; }
 
-  .filters { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 16px; }
-  .filters button {
-    flex: none; padding: 8px 14px; border-radius: 20px; border: 1px solid var(--morado-oscuro);
-    background: white; color: var(--morado-oscuro); cursor: pointer; font-size: 13px;
-  }
-  .filters button.active { background: var(--morado-oscuro); color: white; }
-
   .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
   @media (min-width: 700px) { .grid { grid-template-columns: repeat(4, 1fr); } }
   @media (min-width: 1100px) { .grid { grid-template-columns: repeat(5, 1fr); } }
+
+  .empty-category { text-align: center; color: #999; padding: 40px 0; font-size: 14px; grid-column: 1 / -1; }
 
   .card {
     position: relative;
@@ -152,7 +147,6 @@
   .carousel-dots .dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(0,0,0,0.3); cursor: pointer; }
   .carousel-dots .dot.active { background: var(--amarillo); }
 
-  /* Selector de imagen: texto + botones numerados + compartir */
   .image-picker-label {
     padding: 10px 16px 4px 16px; font-size: 13px; font-weight: bold; color: var(--morado-oscuro);
   }
@@ -240,20 +234,18 @@
   <span class="switch-link" id="switch-market-link" onclick="cambiarMercadoManual()"></span>
 </div>
 
-<div class="tabs">
-  <button class="tab-btn active" data-tab="baskets">Gift Baskets</button>
-  <button class="tab-btn" data-tab="occasions">Occasions</button>
+<div class="tabs" id="tabs-container">
+  <button class="tab-btn active" data-tab="Desayuno sorpresa">Desayuno sorpresa</button>
+  <button class="tab-btn" data-tab="Frutas expresiva">Frutas expresiva</button>
+  <button class="tab-btn" data-tab="Rosas">Rosas</button>
+  <button class="tab-btn" data-tab="Detalles">Detalles</button>
+  <button class="tab-btn" data-tab="Adicionales">Adicionales</button>
   <button class="tab-btn" data-tab="about">About</button>
   <button class="tab-btn" data-tab="contact">Contact</button>
 </div>
 
-<div class="tab-content active" id="tab-baskets">
-  <div class="filters" id="category-filters"></div>
+<div class="tab-content active" id="tab-productos">
   <div class="grid" id="grid"></div>
-</div>
-
-<div class="tab-content" id="tab-occasions">
-  <p>We create baskets for every occasion: birthdays, anniversaries, get well soon, new baby, graduations and more. Browse Gift Baskets and filter by occasion soon!</p>
 </div>
 
 <div class="tab-content" id="tab-about">
@@ -320,10 +312,14 @@ const IDIOMAS_POR_MERCADO = { UK: ['en', 'es'], CO: ['es'] };
 const IDIOMA_DEFECTO = { UK: 'en', CO: 'es' };
 const SIMBOLO_MONEDA = { UK: '£', CO: '$' };
 
+// Pestañas = categorías reales del negocio (deben coincidir EXACTO con
+// el campo "categoria" que se guarda desde admin.html)
+const CATEGORIA_ACTIVA_DEFECTO = 'Desayuno sorpresa';
+
 let mercado = 'UK';
 let idioma = 'en';
 let cestas = [];
-let categoriaActiva = 'Todas';
+let categoriaActiva = CATEGORIA_ACTIVA_DEFECTO;
 
 document.getElementById('year').textContent = new Date().getFullYear();
 
@@ -406,33 +402,23 @@ async function cargarCestas() {
     const data = await res.json();
     const todas = (data.documents || []).map(parseFirestoreDoc);
     cestas = todas.filter(c => c.pais === mercado && c.enStock);
-    renderFiltros();
     renderGrid();
   } catch (e) {
-    document.getElementById('grid').innerHTML = '<p>Could not load baskets right now.</p>';
+    document.getElementById('grid').innerHTML = '<p class="empty-category">Could not load baskets right now.</p>';
   }
 }
 
-function renderFiltros() {
-  const cont = document.getElementById('category-filters');
-  const categorias = ['Todas', ...new Set(cestas.map(c => c.categoria).filter(Boolean))];
-  cont.innerHTML = categorias.map(cat =>
-    `<button class="${cat === categoriaActiva ? 'active' : ''}" data-cat="${cat}">${cat}</button>`
-  ).join('');
-  cont.querySelectorAll('button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      categoriaActiva = btn.dataset.cat;
-      renderFiltros();
-      renderGrid();
-    });
-  });
-}
-
+// -----------------------------------------------------------------------
+// GRID DE CESTAS — filtrada por la categoría de la pestaña activa
+// -----------------------------------------------------------------------
 function renderGrid() {
   const grid = document.getElementById('grid');
-  const filtradas = categoriaActiva === 'Todas'
-    ? cestas
-    : cestas.filter(c => c.categoria === categoriaActiva);
+  const filtradas = cestas.filter(c => c.categoria === categoriaActiva);
+
+  if (filtradas.length === 0) {
+    grid.innerHTML = `<p class="empty-category">${idioma === 'es' ? 'No hay cestas en esta categoría todavía.' : 'No baskets in this category yet.'}</p>`;
+    return;
+  }
 
   grid.innerHTML = filtradas.map(c => `
     <div class="card" onclick="abrirModal('${c.id}')">
@@ -451,7 +437,7 @@ let cestaActual = null;
 let carruselFotos = [];
 let carruselIndex = 0;
 let touchStartX = 0;
-let estiloSeleccionado = null; // índice de la imagen elegida (o null si no eligió)
+let estiloSeleccionado = null;
 let itemsContenido = [];
 
 function abrirModal(id) {
@@ -540,9 +526,6 @@ function carruselTouchEnd(e) {
   }
 }
 
-// -----------------------------------------------------------------------
-// SELECTOR DE IMAGEN: "Choose your favourite image" + botones numerados
-// -----------------------------------------------------------------------
 function renderImagePicker() {
   const label = document.getElementById('image-picker-label');
   const cont = document.getElementById('image-picker');
@@ -605,9 +588,6 @@ function cerrarModal() {
   document.getElementById('modal').classList.remove('active');
 }
 
-// -----------------------------------------------------------------------
-// PEDIDO POR WHATSAPP — incluye imagen elegida (número + enlace) y checklist
-// -----------------------------------------------------------------------
 function enviarPedidoWhatsApp() {
   if (!cestaActual) return;
   const nombre = texto(cestaActual.nombre, cestaActual.nombreEs);
@@ -644,12 +624,24 @@ document.querySelectorAll('.subtab-btn').forEach(btn => {
   });
 });
 
+// Pestañas superiores: categorías de producto + About + Contact
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
-    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+
+    const destino = btn.dataset.tab;
+
+    if (destino === 'about' || destino === 'contact') {
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.getElementById('tab-' + destino).classList.add('active');
+    } else {
+      // Es una categoría de producto: mostrar la grilla y filtrar
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.getElementById('tab-productos').classList.add('active');
+      categoriaActiva = destino;
+      renderGrid();
+    }
   });
 });
 
