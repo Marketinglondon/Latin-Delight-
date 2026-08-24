@@ -42,10 +42,12 @@ jobs:
           sed -i "s/id 'org.jetbrains.kotlin.android' version '.*'/id 'org.jetbrains.kotlin.android' version '1.9.22'/" android/settings.gradle
 
       # 5. Activar plugin de Google Services + copiar google-services.json
+      #    (sintaxis moderna: el plugin se declara dentro del bloque
+      #    plugins {} de app/build.gradle, no con "apply plugin:" al final)
       - name: Add Google Services plugin
         run: |
           sed -i "/id 'org.jetbrains.kotlin.android'/a\\    id 'com.google.gms.google-services' version '4.5.0' apply false" android/settings.gradle
-          echo "apply plugin: 'com.google.gms.google-services'" >> android/app/build.gradle
+          sed -i "/id \"com.android.application\"/a\\    id \"com.google.gms.google-services\"" android/app/build.gradle
 
       - name: Copy google-services.json
         run: cp firebase-config/google-services.json android/app/google-services.json
