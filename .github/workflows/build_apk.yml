@@ -32,7 +32,6 @@ jobs:
         run: flutter create --platforms=android --project-name=latin_delight_app .
 
       # 4. Ajustar versiones de AGP / Kotlin / Gradle
-      #    (Flutter genera settings.gradle con COMILLAS DOBLES, no simples)
       - name: Set Gradle wrapper version
         run: |
           sed -i 's/distributionUrl=.*/distributionUrl=https\\:\/\/services.gradle.org\/distributions\/gradle-8.4-all.zip/' android/gradle/wrapper/gradle-wrapper.properties
@@ -48,37 +47,38 @@ jobs:
           sed -i '/id "org.jetbrains.kotlin.android"/a\    id "com.google.gms.google-services" version "4.5.0" apply false' android/settings.gradle
           sed -i '/id "com.android.application"/a\    id "com.google.gms.google-services"' android/app/build.gradle
 
+      # 6. Corregir el applicationId para que coincida con el paquete
+      #    registrado en Firebase (com.latindelight.app), y ajustar
+      #    compileSdk / NDK. Se manejan AMBAS sintaxis posibles
+      #    ("compileSdk X" y "compileSdk = X") porque distintas
+      #    versiones de la plantilla de Flutter usan una u otra.
+      - name: Fix application ID and SDK versions
+        run: |
+          sed -i 's/com\.example\.latin_delight_app/com.latindelight.app/g' android/app/build.gradle
+          sed -i \
+            -e 's/compileSdk = flutter.compileSdkVersion/compileSdk = 35/' \
+            -e 's/compileSdk flutter.compileSdkVersion/compileSdk 35/' \
+            -e 's/ndkVersion = flutter.ndkVersion/ndkVersion = "25.1.8937393"/' \
+            -e 's/ndkVersion flutter.ndkVersion/ndkVersion "25.1.8937393"/' \
+            android/app/build.gradle
+
       - name: Copy google-services.json
         run: cp firebase-config/google-services.json android/app/google-services.json
-
-      # 6. Ajustar compileSdk / NDK
-      - name: Set compileSdk and NDK version
-        run: |
-          sed -i 's/compileSdk flutter.compileSdkVersion/compileSdk 35/' android/app/build.gradle
-          sed -i 's/ndkVersion flutter.ndkVersion/ndkVersion "26.3.11579264"/' android/app/build.gradle
 
       # 7. flutter pub get
       - name: Install dependencies
         run: flutter pub get
 
-      # 8. (Eliminado) Ya no se fuerza compileSdk en subproyectos:
-      #    con AGP 8.3.0 y las versiones actuales de los paquetes de
-      #    terceros, cada plugin declara un compileSdk ya compatible
-      #    con el compileSdk 35 del proyecto principal. Forzarlo aquí
-      #    causaba "It is too late to set compileSdk" porque AGP 8.x
-      #    lee ese valor antes de que cualquier hook (afterEvaluate o
-      #    plugins.withType) llegue a tiempo.
-
-      # 9. Generar ícono de la app (debe ir después de crear android/
+      # 8. Generar ícono de la app (debe ir después de crear android/
       #    y antes de compilar, si no el ícono no se aplica)
       - name: Generate launcher icon
         run: dart run flutter_launcher_icons
 
-      # 10. Compilar APK
+      # 9. Compilar APK
       - name: Build APK
         run: flutter build apk --release
 
-      # 11. Subir como artifact descargable
+      # 10. Subir como artifact descargable
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
@@ -86,14 +86,12 @@ jobs:
           path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 30
 
-      # 12. Verificación: mostrar settings.gradle y build.gradle finales
-      #     en el log, útil para depurar rápido si algo vuelve a fallar
+      # 11. Verificación: mostrar build.gradle final en el log,
+      #     útil para depurar rápido si algo vuelve a fallar
       - name: Debug gradle files (solo si falla algo más adelante)
         if: failure()
         run: |
           echo "----- settings.gradle -----"
           cat android/settings.gradle
-          echo "----- android/build.gradle -----"
-          cat android/build.gradle
           echo "----- app/build.gradle -----"
-          cat android/app/build.gradle
+          cat android/app/build.gradle 
