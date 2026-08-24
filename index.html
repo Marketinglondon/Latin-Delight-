@@ -221,7 +221,7 @@
   <div id="splash-text" style="color:var(--turquesa); font-weight:bold; font-size:18px;">
     Capture a smile<br>on your love one's face
   </div>
-  <button onclick="document.getElementById('splash').style.display='none'">
+  <button id="splash-btn" onclick="document.getElementById('splash').style.display='none'">
     Discover your basket / Descubre tu cesta
   </button>
 </div>
@@ -233,7 +233,7 @@
   </div>
   <div class="actions">
     <button id="btn-idioma" style="display:none" onclick="toggleIdioma()">EN / ES</button>
-    <button onclick="compartir()">Share</button>
+    <button id="btn-share" onclick="compartir()">Share</button>
   </div>
 </header>
 
@@ -248,8 +248,8 @@
   <button class="tab-btn" data-tab="Rosas">Rosas</button>
   <button class="tab-btn" data-tab="Detalles">Detalles</button>
   <button class="tab-btn" data-tab="Adicionales">Adicionales</button>
-  <button class="tab-btn" data-tab="about">About</button>
-  <button class="tab-btn" data-tab="contact">Contact</button>
+  <button class="tab-btn" data-tab="about" id="tab-btn-about">About</button>
+  <button class="tab-btn" data-tab="contact" id="tab-btn-contact">Contact</button>
 </div>
 
 <div class="tab-content active" id="tab-productos">
@@ -263,11 +263,11 @@
 </div>
 
 <div class="tab-content" id="tab-about">
-  <p>Latin Delight Ltd. crafts gift baskets that combine balloons, flowers, decorative packaging and a variety of breakfast, snack, meal and drink options — sometimes with special decorative accessories included.</p>
+  <p id="about-text">Latin Delight Ltd. crafts gift baskets that combine balloons, flowers, decorative packaging and a variety of breakfast, snack, meal and drink options — sometimes with special decorative accessories included.</p>
 </div>
 
 <div class="tab-content" id="tab-contact">
-  <p>Message us directly on WhatsApp to place an order or ask about custom baskets.</p>
+  <p id="contact-text">Message us directly on WhatsApp to place an order or ask about custom baskets.</p>
   <a class="whatsapp-btn" id="contact-whatsapp" href="#" target="_blank">WhatsApp Us</a>
 </div>
 
@@ -286,19 +286,19 @@
     <div class="image-picker" id="image-picker"></div>
 
     <div class="carousel-actions">
-      <button onclick="compartirFotoActual()">📤 Share this photo</button>
+      <button id="btn-share-photo" onclick="compartirFotoActual()">📤 Share this photo</button>
     </div>
 
     <div class="body">
       <h2 id="modal-nombre"></h2>
       <div class="price" id="modal-precio"></div>
       <div class="subtabs">
-        <button class="subtab-btn active" data-sub="incl">What's Included</button>
-        <button class="subtab-btn" data-sub="desc">Description</button>
+        <button class="subtab-btn active" data-sub="incl" id="subtab-btn-incl">What's Included</button>
+        <button class="subtab-btn" data-sub="desc" id="subtab-btn-desc">Description</button>
       </div>
       <ul class="content-checklist subtab-content active" id="sub-incl"></ul>
       <div class="subtab-content" id="sub-desc"></div>
-      <button class="whatsapp-btn" onclick="enviarPedidoWhatsApp()">Order on WhatsApp</button>
+      <button class="whatsapp-btn" id="btn-order-whatsapp" onclick="enviarPedidoWhatsApp()">Order on WhatsApp</button>
     </div>
   </div>
 </div>
@@ -333,6 +333,46 @@ const CATEGORIA_OCASIONES = {
   'Detalles': ['Globos y peluches', 'Orquídeas y globos helio', 'Tabla de quesos'],
 };
 
+// -----------------------------------------------------------------------
+// TODOS los textos fijos de la interfaz, centralizados aquí en ambos
+// idiomas. Cualquier texto estático de la app debe salir de este
+// diccionario, nunca quedar hardcodeado en el HTML.
+// -----------------------------------------------------------------------
+const UI_TEXT = {
+  en: {
+    share: 'Share',
+    whatsappUs: 'WhatsApp Us',
+    aboutTab: 'About',
+    contactTab: 'Contact',
+    aboutText: "Latin Delight Ltd. crafts gift baskets that combine balloons, flowers, decorative packaging and a variety of breakfast, snack, meal and drink options — sometimes with special decorative accessories included.",
+    contactText: 'Message us directly on WhatsApp to place an order or ask about custom baskets.',
+    included: "What's Included",
+    description: 'Description',
+    chooseImage: 'Choose your favourite image',
+    sharePhoto: '📤 Share this photo',
+    orderWhatsapp: 'Order on WhatsApp',
+    backToOccasions: '‹ Back to occasions',
+    noBaskets: 'No baskets available yet.',
+    couldNotLoad: 'Could not load baskets right now.',
+  },
+  es: {
+    share: 'Compartir',
+    whatsappUs: 'Escríbenos por WhatsApp',
+    aboutTab: 'Nosotros',
+    contactTab: 'Contacto',
+    aboutText: 'Latin Delight Ltd. crea cestas de regalo que combinan globos, flores, empaques decorativos y una variedad de opciones de desayuno, snacks, comidas y bebidas — algunas con accesorios decorativos especiales incluidos.',
+    contactText: 'Escríbenos directamente por WhatsApp para hacer un pedido o preguntar por cestas personalizadas.',
+    included: 'Contenido',
+    description: 'Descripción',
+    chooseImage: 'Elige tu imagen favorita',
+    sharePhoto: '📤 Compartir esta foto',
+    orderWhatsapp: 'Pedir por WhatsApp',
+    backToOccasions: '‹ Volver a ocasiones',
+    noBaskets: 'No hay cestas disponibles todavía.',
+    couldNotLoad: 'No se pudieron cargar las cestas en este momento.',
+  },
+};
+
 let mercado = 'UK';
 let idioma = 'en';
 let cestas = [];
@@ -361,6 +401,26 @@ function cambiarMercadoManual() {
   cargarCestas();
 }
 
+// -----------------------------------------------------------------------
+// Aplica TODOS los textos fijos de la UI según el idioma activo.
+// Se llama al iniciar y cada vez que cambia idioma/mercado.
+// -----------------------------------------------------------------------
+function aplicarTraduccionEstatica() {
+  const t = UI_TEXT[idioma];
+
+  document.getElementById('btn-share').textContent = t.share;
+  document.getElementById('contact-whatsapp').textContent = t.whatsappUs;
+  document.getElementById('tab-btn-about').textContent = t.aboutTab;
+  document.getElementById('tab-btn-contact').textContent = t.contactTab;
+  document.getElementById('about-text').textContent = t.aboutText;
+  document.getElementById('contact-text').textContent = t.contactText;
+  document.getElementById('subtab-btn-incl').textContent = t.included;
+  document.getElementById('subtab-btn-desc').textContent = t.description;
+  document.getElementById('btn-share-photo').textContent = t.sharePhoto;
+  document.getElementById('btn-order-whatsapp').textContent = t.orderWhatsapp;
+  document.getElementById('back-to-occasions').textContent = t.backToOccasions;
+}
+
 function aplicarConfigMercado() {
   idioma = localStorage.getItem('ld_idioma') || IDIOMA_DEFECTO[mercado];
 
@@ -376,12 +436,20 @@ function aplicarConfigMercado() {
 
   const numero = NUMEROS[mercado];
   document.getElementById('contact-whatsapp').href = `https://wa.me/${numero}`;
+
+  aplicarTraduccionEstatica();
 }
 
 function toggleIdioma() {
   idioma = idioma === 'en' ? 'es' : 'en';
   localStorage.setItem('ld_idioma', idioma);
-  renderGrid();
+  aplicarTraduccionEstatica();
+  if (document.getElementById('grid-wrapper').style.display !== 'none') {
+    renderGrid();
+  }
+  if (document.getElementById('occasion-list-wrapper').style.display !== 'none' && categoriaActiva) {
+    renderListaOcasiones(CATEGORIA_OCASIONES[categoriaActiva] || []);
+  }
 }
 
 function texto(en, es) {
@@ -476,7 +544,7 @@ function renderGrid() {
   }
 
   if (filtradas.length === 0) {
-    grid.innerHTML = `<p class="empty-category">${idioma === 'es' ? 'No hay cestas disponibles todavía.' : 'No baskets available yet.'}</p>`;
+    grid.innerHTML = `<p class="empty-category">${UI_TEXT[idioma].noBaskets}</p>`;
     return;
   }
 
@@ -523,6 +591,9 @@ function abrirModal(id) {
   renderChecklistContenido();
 
   document.getElementById('sub-desc').textContent = texto(c.descripcion, c.descripcionEs);
+
+  // Reforzar traducción de subtabs y demás textos al abrir el modal
+  aplicarTraduccionEstatica();
 
   document.getElementById('modal').classList.add('active');
 }
@@ -596,6 +667,7 @@ function renderImagePicker() {
     return;
   }
 
+  label.textContent = UI_TEXT[idioma].chooseImage;
   label.style.display = 'block';
   cont.innerHTML = carruselFotos.map((_, i) => `
     <button class="${estiloSeleccionado === i ? 'selected' : ''}" onclick="elegirImagen(${i})">${i + 1}</button>
@@ -707,7 +779,7 @@ function compartir() {
     navigator.share({ title: 'Latin Delight Ltd.', url: window.location.href });
   } else {
     navigator.clipboard.writeText(window.location.href);
-    alert('Link copied!');
+    alert(idioma === 'es' ? '¡Enlace copiado!' : 'Link copied!');
   }
 }
 
