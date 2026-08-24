@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Latin Delight — Admin</title>
+<meta property="og:title" content="Latin Delight — Admin">
+<meta property="og:description" content="Panel de administración de Latin Delight Ltd.">
+<meta property="og:image" content="https://marketinglondon.github.io/Latin-Delight-/assets/icon/Logo.png">
+<meta property="og:url" content="https://marketinglondon.github.io/Latin-Delight-/admin.html">
+<meta property="og:type" content="website">
 <link rel="icon" href="assets/icon/Icon.png">
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -89,7 +94,6 @@
   .helper { font-size: 11px; color: #888; margin-top: 2px; }
   #status { font-size: 13px; margin-top: 10px; color: var(--turquesa); }
 
-  /* Subida de fotos: galería + botón */
   .photo-picker {
     display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;
   }
@@ -169,13 +173,11 @@
 
     <label>Categoría</label>
     <select id="f-categoria">
-      <option>Desayuno</option>
-      <option>Snacks</option>
-      <option>Comidas</option>
-      <option>Bebidas</option>
-      <option>Cestas con globos</option>
-      <option>Cestas con flores</option>
-      <option>Accesorios</option>
+      <option>Desayuno sorpresa</option>
+      <option>Frutas expresiva</option>
+      <option>Rosas</option>
+      <option>Detalles</option>
+      <option>Adicionales</option>
     </select>
 
     <label>Ocasión</label>
@@ -203,7 +205,7 @@
       <textarea id="f-descripcionEs"></textarea>
     </div>
 
-    <label id="label-contenido">Contenido (qué incluye)</label>
+    <label id="label-contenido">Contenido (una línea por ítem, para que salga como lista)</label>
     <textarea id="f-contenido" onblur="autotraducirCampo('f-contenido','f-contenidoEs')"></textarea>
     <div id="es-fields-contenido" class="es-only" style="display:none">
       <label>Contenido (español) — autocompletado, editable</label>
@@ -238,10 +240,7 @@
 </div>
 
 <script>
-// -----------------------------------------------------------------------
-// CONFIG
-// -----------------------------------------------------------------------
-const CODIGO_ACCESO = 'latindelight2026'; // filtro básico, no es contraseña real segura
+const CODIGO_ACCESO = 'latindelight2026';
 const PROJECT_ID = 'latin-delight';
 const FIRESTORE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/cestas`;
 
@@ -254,18 +253,14 @@ firebase.initializeApp(firebaseConfig);
 
 const MY_MEMORY_ENDPOINT = 'https://api.mymemory.translated.net/get';
 
-// Cloudinary — subida directa sin backend (unsigned upload preset)
 const CLOUDINARY_CLOUD_NAME = 'iggcl810';
 const CLOUDINARY_UPLOAD_PRESET = 'latin_delight_unsigned';
 const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
 
 let mercadoActivo = 'UK';
 let cestasCache = [];
-let fotosFormulario = []; // URLs ya subidas de la cesta en edición/creación
+let fotosFormulario = [];
 
-// -----------------------------------------------------------------------
-// ACCESO (filtro básico) + AUTENTICACIÓN ANÓNIMA FIREBASE
-// -----------------------------------------------------------------------
 async function verificarAcceso() {
   const val = document.getElementById('access-code').value;
   if (val !== CODIGO_ACCESO) {
@@ -289,9 +284,6 @@ async function obtenerHeaders() {
   return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
 }
 
-// -----------------------------------------------------------------------
-// MERCADO ACTIVO (filtra la tabla, no el catálogo público)
-// -----------------------------------------------------------------------
 function cambiarMercado(m) {
   mercadoActivo = m;
   document.getElementById('btn-uk').classList.toggle('active', m === 'UK');
@@ -299,9 +291,6 @@ function cambiarMercado(m) {
   renderTabla();
 }
 
-// -----------------------------------------------------------------------
-// FIRESTORE REST — helpers de parseo / serialización
-// -----------------------------------------------------------------------
 function parseDoc(doc) {
   const f = doc.fields || {};
   const get = (k) => f[k] ? (f[k].stringValue ?? '') : '';
@@ -345,9 +334,6 @@ function toFirestoreFields(c) {
   };
 }
 
-// -----------------------------------------------------------------------
-// CARGA Y RENDER DE TABLA
-// -----------------------------------------------------------------------
 async function cargarCestas() {
   const res = await fetch(FIRESTORE_URL);
   const data = await res.json();
@@ -375,9 +361,6 @@ function renderTabla() {
   `).join('');
 }
 
-// -----------------------------------------------------------------------
-// SUBIDA DE FOTOS A CLOUDINARY (directo desde galería/cámara)
-// -----------------------------------------------------------------------
 function renderPhotoPicker() {
   const cont = document.getElementById('photo-picker');
   const thumbs = fotosFormulario.map((url, i) => `
@@ -404,7 +387,6 @@ async function subirFotosSeleccionadas(event) {
   const cont = document.getElementById('photo-picker');
 
   for (const archivo of archivos) {
-    // Muestra un placeholder "Subiendo..." mientras termina
     const placeholderId = 'ph-' + Date.now() + Math.random().toString(36).slice(2);
     cont.insertAdjacentHTML('beforeend', `
       <div class="photo-thumb uploading" id="${placeholderId}">Subiendo...</div>
@@ -431,12 +413,9 @@ async function subirFotosSeleccionadas(event) {
     renderPhotoPicker();
   }
 
-  event.target.value = ''; // permite volver a elegir el mismo archivo después
+  event.target.value = '';
 }
 
-// -----------------------------------------------------------------------
-// FORMULARIO — abrir / cerrar / mostrar campos ES según mercado
-// -----------------------------------------------------------------------
 function alCambiarPaisForm() {
   const esUK = document.getElementById('f-pais').value === 'UK';
   document.getElementById('es-fields').classList.toggle('visible', esUK);
@@ -445,7 +424,9 @@ function alCambiarPaisForm() {
   document.getElementById('label-precio').textContent = `Precio de venta (${simbolo})`;
   document.getElementById('label-nombre').textContent = esUK ? 'Nombre (inglés)' : 'Nombre';
   document.getElementById('label-descripcion').textContent = esUK ? 'Descripción (inglés)' : 'Descripción';
-  document.getElementById('label-contenido').textContent = esUK ? "Contenido / What's included (inglés)" : 'Contenido (qué incluye)';
+  document.getElementById('label-contenido').textContent = esUK
+    ? "Contenido / What's included (inglés) — una línea por ítem"
+    : 'Contenido — una línea por ítem';
 }
 
 function abrirFormulario() {
@@ -496,9 +477,6 @@ function cerrarFormulario() {
   document.getElementById('form-modal').classList.remove('active');
 }
 
-// -----------------------------------------------------------------------
-// AUTOTRADUCCIÓN (solo si el mercado del formulario es UK)
-// -----------------------------------------------------------------------
 async function autotraducirCampo(idOrigen, idDestino) {
   if (document.getElementById('f-pais').value !== 'UK') return;
   const destino = document.getElementById(idDestino);
@@ -515,9 +493,6 @@ async function autotraducirCampo(idOrigen, idDestino) {
   }
 }
 
-// -----------------------------------------------------------------------
-// GUARDAR (crear o actualizar)
-// -----------------------------------------------------------------------
 async function guardarCesta() {
   const pais = document.getElementById('f-pais').value;
   const esUK = pais === 'UK';
@@ -568,9 +543,6 @@ async function guardarCesta() {
   }
 }
 
-// -----------------------------------------------------------------------
-// ELIMINAR
-// -----------------------------------------------------------------------
 async function eliminarCesta(id) {
   if (!confirm('¿Eliminar esta cesta?')) return;
   const headers = await obtenerHeaders();
@@ -578,9 +550,6 @@ async function eliminarCesta(id) {
   await cargarCestas();
 }
 
-// -----------------------------------------------------------------------
-// TRADUCIR TODOS (solo cestas con pais='UK')
-// -----------------------------------------------------------------------
 async function traducirTodos() {
   const status = document.getElementById('status');
   const headers = await obtenerHeaders();
@@ -639,4 +608,4 @@ async function traducir(textoEn) {
 }
 </script>
 </body>
-</html>
+  </html>
