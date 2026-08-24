@@ -242,15 +242,7 @@
   <span class="switch-link" id="switch-market-link" onclick="cambiarMercadoManual()"></span>
 </div>
 
-<div class="tabs" id="tabs-container">
-  <button class="tab-btn active" data-tab="Desayuno sorpresa">Desayuno sorpresa</button>
-  <button class="tab-btn" data-tab="Frutas expresiva">Frutas expresiva</button>
-  <button class="tab-btn" data-tab="Rosas">Rosas</button>
-  <button class="tab-btn" data-tab="Detalles">Detalles</button>
-  <button class="tab-btn" data-tab="Adicionales">Adicionales</button>
-  <button class="tab-btn" data-tab="about" id="tab-btn-about">About</button>
-  <button class="tab-btn" data-tab="contact" id="tab-btn-contact">Contact</button>
-</div>
+<div class="tabs" id="tabs-container"></div>
 
 <div class="tab-content active" id="tab-productos">
   <div id="occasion-list-wrapper" style="display:none">
@@ -326,6 +318,12 @@ const IDIOMAS_POR_MERCADO = { UK: ['en', 'es'], CO: ['es'] };
 const IDIOMA_DEFECTO = { UK: 'en', CO: 'es' };
 const SIMBOLO_MONEDA = { UK: '£', CO: '$' };
 
+// Orden de categorías + ocasiones internas por categoría. El VALOR
+// (string) es el que se guarda/filtra en Firestore — nunca cambia.
+// Lo que sí cambia según idioma es el TEXTO que ve el cliente, definido
+// en CATEGORIA_LABELS y OCASION_LABELS más abajo.
+const CATEGORIAS_ORDEN = ['Desayuno sorpresa', 'Frutas expresiva', 'Rosas', 'Detalles', 'Adicionales'];
+
 const CATEGORIA_OCASIONES = {
   'Desayuno sorpresa': ['Cumpleaños', 'Aniversarios', 'Baby Shower', 'Apoyo emocional', 'Fecha de calendario'],
   'Frutas expresiva': ['Bandeja de frutas', 'Frutas y rosas', 'Fresas con chocolate', 'Fresas con rosas', 'Fresas con tortas'],
@@ -333,10 +331,43 @@ const CATEGORIA_OCASIONES = {
   'Detalles': ['Globos y peluches', 'Orquídeas y globos helio', 'Tabla de quesos'],
 };
 
+const CATEGORIA_LABELS = {
+  'Desayuno sorpresa': { es: 'Desayuno sorpresa', en: 'Surprise Breakfast' },
+  'Frutas expresiva': { es: 'Frutas expresiva', en: 'Expressive Fruits' },
+  'Rosas': { es: 'Rosas', en: 'Roses' },
+  'Detalles': { es: 'Detalles', en: 'Details' },
+  'Adicionales': { es: 'Adicionales', en: 'Extras' },
+};
+
+const OCASION_LABELS = {
+  'Cumpleaños': { es: 'Cumpleaños', en: 'Birthday' },
+  'Aniversarios': { es: 'Aniversarios', en: 'Anniversary' },
+  'Baby Shower': { es: 'Baby Shower', en: 'Baby Shower' },
+  'Apoyo emocional': { es: 'Apoyo emocional', en: 'Emotional Support' },
+  'Fecha de calendario': { es: 'Fecha de calendario', en: 'Calendar Date' },
+  'Bandeja de frutas': { es: 'Bandeja de frutas', en: 'Fruit Tray' },
+  'Frutas y rosas': { es: 'Frutas y rosas', en: 'Fruits & Roses' },
+  'Fresas con chocolate': { es: 'Fresas con chocolate', en: 'Chocolate Covered Strawberries' },
+  'Fresas con rosas': { es: 'Fresas con rosas', en: 'Strawberries & Roses' },
+  'Fresas con tortas': { es: 'Fresas con tortas', en: 'Strawberries & Cake' },
+  'Caja de rosas': { es: 'Caja de rosas', en: 'Box of Roses' },
+  'Buquet de rosas': { es: 'Buquet de rosas', en: 'Rose Bouquet' },
+  'Rosas con chocolate ferrero': { es: 'Rosas con chocolate ferrero', en: 'Roses with Ferrero Chocolate' },
+  'Rosas con peluche': { es: 'Rosas con peluche', en: 'Roses with Teddy Bear' },
+  'Globos y peluches': { es: 'Globos y peluches', en: 'Balloons & Teddy Bears' },
+  'Orquídeas y globos helio': { es: 'Orquídeas y globos helio', en: 'Orchids & Helium Balloons' },
+  'Tabla de quesos': { es: 'Tabla de quesos', en: 'Cheese Board' },
+};
+
+function labelCategoria(cat) {
+  return (CATEGORIA_LABELS[cat] && CATEGORIA_LABELS[cat][idioma]) || cat;
+}
+function labelOcasion(oc) {
+  return (OCASION_LABELS[oc] && OCASION_LABELS[oc][idioma]) || oc;
+}
+
 // -----------------------------------------------------------------------
-// TODOS los textos fijos de la interfaz, centralizados aquí en ambos
-// idiomas. Cualquier texto estático de la app debe salir de este
-// diccionario, nunca quedar hardcodeado en el HTML.
+// Textos fijos de la interfaz (no product data), en ambos idiomas
 // -----------------------------------------------------------------------
 const UI_TEXT = {
   en: {
@@ -378,6 +409,7 @@ let idioma = 'en';
 let cestas = [];
 let categoriaActiva = null;
 let ocasionActiva = null;
+let tabActiva = 'Desayuno sorpresa'; // puede ser una categoría, 'about' o 'contact'
 
 document.getElementById('year').textContent = new Date().getFullYear();
 
@@ -402,16 +434,49 @@ function cambiarMercadoManual() {
 }
 
 // -----------------------------------------------------------------------
-// Aplica TODOS los textos fijos de la UI según el idioma activo.
-// Se llama al iniciar y cada vez que cambia idioma/mercado.
+// Renderiza las pestañas superiores (5 categorías + About + Contact)
+// con el texto traducido según idioma. Usa delegación de eventos, así
+// que solo se necesita un listener aunque el HTML se regenere.
+// -----------------------------------------------------------------------
+function renderTabs() {
+  const cont = document.getElementById('tabs-container');
+  const t = UI_TEXT[idioma];
+
+  const catBtns = CATEGORIAS_ORDEN.map(cat => `
+    <button class="tab-btn ${tabActiva === cat ? 'active' : ''}" data-tab="${cat}">${labelCategoria(cat)}</button>
+  `).join('');
+
+  cont.innerHTML = catBtns + `
+    <button class="tab-btn ${tabActiva === 'about' ? 'active' : ''}" data-tab="about">${t.aboutTab}</button>
+    <button class="tab-btn ${tabActiva === 'contact' ? 'active' : ''}" data-tab="contact">${t.contactTab}</button>
+  `;
+}
+
+document.getElementById('tabs-container').addEventListener('click', (e) => {
+  const btn = e.target.closest('.tab-btn');
+  if (!btn) return;
+
+  tabActiva = btn.dataset.tab;
+  renderTabs();
+
+  if (tabActiva === 'about' || tabActiva === 'contact') {
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById('tab-' + tabActiva).classList.add('active');
+  } else {
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById('tab-productos').classList.add('active');
+    mostrarCategoria(tabActiva);
+  }
+});
+
+// -----------------------------------------------------------------------
+// Aplica TODOS los textos fijos de la UI según el idioma activo
 // -----------------------------------------------------------------------
 function aplicarTraduccionEstatica() {
   const t = UI_TEXT[idioma];
 
   document.getElementById('btn-share').textContent = t.share;
   document.getElementById('contact-whatsapp').textContent = t.whatsappUs;
-  document.getElementById('tab-btn-about').textContent = t.aboutTab;
-  document.getElementById('tab-btn-contact').textContent = t.contactTab;
   document.getElementById('about-text').textContent = t.aboutText;
   document.getElementById('contact-text').textContent = t.contactText;
   document.getElementById('subtab-btn-incl').textContent = t.included;
@@ -419,6 +484,8 @@ function aplicarTraduccionEstatica() {
   document.getElementById('btn-share-photo').textContent = t.sharePhoto;
   document.getElementById('btn-order-whatsapp').textContent = t.orderWhatsapp;
   document.getElementById('back-to-occasions').textContent = t.backToOccasions;
+
+  renderTabs();
 }
 
 function aplicarConfigMercado() {
@@ -444,11 +511,12 @@ function toggleIdioma() {
   idioma = idioma === 'en' ? 'es' : 'en';
   localStorage.setItem('ld_idioma', idioma);
   aplicarTraduccionEstatica();
-  if (document.getElementById('grid-wrapper').style.display !== 'none') {
-    renderGrid();
-  }
+
   if (document.getElementById('occasion-list-wrapper').style.display !== 'none' && categoriaActiva) {
     renderListaOcasiones(CATEGORIA_OCASIONES[categoriaActiva] || []);
+  }
+  if (document.getElementById('grid-wrapper').style.display !== 'none') {
+    renderGrid();
   }
 }
 
@@ -515,7 +583,7 @@ function renderListaOcasiones(ocasiones) {
   const cont = document.getElementById('occasion-list');
   cont.innerHTML = ocasiones.map(oc => `
     <button onclick="seleccionarOcasion('${oc.replace(/'/g, "\\'")}')">
-      <span>${oc}</span>
+      <span>${labelOcasion(oc)}</span>
       <span class="arrow">›</span>
     </button>
   `).join('');
@@ -555,7 +623,7 @@ function renderGrid() {
       <div class="info">
         <h3>${texto(c.nombre, c.nombreEs)}</h3>
         <div class="price">${SIMBOLO_MONEDA[mercado]}${c.precioVenta.toFixed(2)}</div>
-        ${c.ocasion ? `<span class="badge">${c.ocasion}</span>` : ''}
+        ${c.ocasion ? `<span class="badge">${labelOcasion(c.ocasion)}</span>` : ''}
       </div>
     </div>
   `).join('');
@@ -592,7 +660,6 @@ function abrirModal(id) {
 
   document.getElementById('sub-desc').textContent = texto(c.descripcion, c.descripcionEs);
 
-  // Reforzar traducción de subtabs y demás textos al abrir el modal
   aplicarTraduccionEstatica();
 
   document.getElementById('modal').classList.add('active');
@@ -756,24 +823,6 @@ document.querySelectorAll('.subtab-btn').forEach(btn => {
   });
 });
 
-document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-
-    const destino = btn.dataset.tab;
-
-    if (destino === 'about' || destino === 'contact') {
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      document.getElementById('tab-' + destino).classList.add('active');
-    } else {
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      document.getElementById('tab-productos').classList.add('active');
-      mostrarCategoria(destino);
-    }
-  });
-});
-
 function compartir() {
   if (navigator.share) {
     navigator.share({ title: 'Latin Delight Ltd.', url: window.location.href });
@@ -785,6 +834,7 @@ function compartir() {
 
 (async function init() {
   await detectarMercado();
+  renderTabs();
   aplicarConfigMercado();
   await cargarCestas();
   mostrarCategoria('Desayuno sorpresa');
