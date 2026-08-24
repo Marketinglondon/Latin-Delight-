@@ -19,7 +19,6 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--blanco); color: #333; }
 
-  /* Splash */
   #splash {
     position: fixed; inset: 0; background: var(--blanco);
     display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -31,7 +30,6 @@
     background: var(--amarillo); font-weight: bold; font-size: 16px; cursor: pointer;
   }
 
-  /* Header */
   header {
     display: flex; align-items: center; justify-content: space-between;
     padding: 12px 16px; background: var(--blanco); border-bottom: 2px solid var(--morado-claro);
@@ -45,7 +43,6 @@
     border-radius: 20px; padding: 6px 12px; margin-left: 6px; cursor: pointer;
   }
 
-  /* Hero */
   .hero { width: 100%; max-height: 260px; overflow: hidden; }
   .hero img { width: 100%; object-fit: cover; }
 
@@ -53,10 +50,7 @@
     background: var(--morado-claro); text-align: center; padding: 8px; font-size: 14px; color: var(--morado-oscuro);
   }
 
-  /* Tabs */
-  .tabs {
-    display: flex; overflow-x: auto; background: var(--turquesa);
-  }
+  .tabs { display: flex; overflow-x: auto; background: var(--turquesa); }
   .tabs button {
     flex: none; padding: 12px 18px; background: none; border: none; color: white;
     font-size: 14px; cursor: pointer; opacity: 0.8;
@@ -66,7 +60,6 @@
   .tab-content { display: none; padding: 16px; }
   .tab-content.active { display: block; }
 
-  /* Filters */
   .filters { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 16px; }
   .filters button {
     flex: none; padding: 8px 14px; border-radius: 20px; border: 1px solid var(--morado-oscuro);
@@ -74,10 +67,7 @@
   }
   .filters button.active { background: var(--morado-oscuro); color: white; }
 
-  /* Grid */
-  .grid {
-    display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px;
-  }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
   @media (min-width: 700px) { .grid { grid-template-columns: repeat(4, 1fr); } }
   @media (min-width: 1100px) { .grid { grid-template-columns: repeat(5, 1fr); } }
 
@@ -99,7 +89,6 @@
     font-size: 10px; padding: 2px 7px; border-radius: 10px;
   }
 
-  /* Modal */
   #modal {
     display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6);
     z-index: 500; align-items: center; justify-content: center; padding: 16px;
@@ -129,14 +118,9 @@
     background: #25D366; color: white; border-radius: 10px; text-decoration: none; font-weight: bold;
   }
 
-  /* Carrusel de fotos (varios estilos, mismo precio) */
   .carousel { position: relative; width: 100%; height: 220px; overflow: hidden; background: #f2f2f2; border-radius: 14px 14px 0 0; }
-  .carousel-track {
-    display: flex; height: 100%; transition: transform 0.3s ease;
-  }
-  .carousel-track img {
-    width: 100%; height: 220px; object-fit: cover; flex-shrink: 0;
-  }
+  .carousel-track { display: flex; height: 100%; transition: transform 0.3s ease; }
+  .carousel-track img { width: 100%; height: 220px; object-fit: cover; flex-shrink: 0; }
   .carousel-btn {
     position: absolute; top: 50%; transform: translateY(-50%);
     background: rgba(255,255,255,0.85); border: none; border-radius: 50%;
@@ -149,9 +133,7 @@
     position: absolute; bottom: 8px; left: 0; right: 0;
     display: flex; justify-content: center; gap: 6px;
   }
-  .carousel-dots .dot {
-    width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.6); cursor: pointer;
-  }
+  .carousel-dots .dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.6); cursor: pointer; }
   .carousel-dots .dot.active { background: var(--amarillo); }
 
   footer { text-align: center; padding: 20px; color: #999; font-size: 12px; }
@@ -159,7 +141,6 @@
 </head>
 <body>
 
-<!-- Splash -->
 <div id="splash">
   <img src="assets/icon/Logo.png" alt="Latin Delight">
   <div id="splash-text" style="color:var(--turquesa); font-weight:bold; font-size:18px;">
@@ -170,7 +151,6 @@
   </button>
 </div>
 
-<!-- Header -->
 <header>
   <div class="brand">
     <img src="assets/icon/Logo.png" alt="logo">
@@ -188,7 +168,6 @@
 
 <div class="location-banner" id="location-banner">🇬🇧 London - England</div>
 
-<!-- Tabs -->
 <div class="tabs">
   <button class="tab-btn active" data-tab="baskets">Gift Baskets</button>
   <button class="tab-btn" data-tab="occasions">Occasions</button>
@@ -196,7 +175,6 @@
   <button class="tab-btn" data-tab="contact">Contact</button>
 </div>
 
-<!-- Gift Baskets tab -->
 <div class="tab-content active" id="tab-baskets">
   <div class="filters" id="category-filters"></div>
   <div class="grid" id="grid"></div>
@@ -215,7 +193,6 @@
   <a class="whatsapp-btn" id="contact-whatsapp" href="#" target="_blank">WhatsApp Us</a>
 </div>
 
-<!-- Modal -->
 <div id="modal">
   <div class="content">
     <button class="close" onclick="cerrarModal()">&times;</button>
@@ -251,8 +228,8 @@ const PROJECT_ID = 'TU_PROJECT_ID';
 const FIRESTORE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/cestas`;
 
 const NUMEROS = {
-  UK: '44XXXXXXXXXX',
-  CO: '57XXXXXXXXXX',
+  UK: '447446830987',
+  CO: '573226082281',
 };
 
 const IDIOMAS_POR_MERCADO = { UK: ['en', 'es'], CO: ['es'] };
@@ -266,9 +243,6 @@ let categoriaActiva = 'Todas';
 
 document.getElementById('year').textContent = new Date().getFullYear();
 
-// -----------------------------------------------------------------------
-// DETECCIÓN DE MERCADO (respeta elección manual guardada)
-// -----------------------------------------------------------------------
 async function detectarMercado() {
   const guardado = localStorage.getItem('ld_mercado');
   if (guardado) { mercado = guardado; return; }
@@ -300,17 +274,11 @@ function toggleIdioma() {
   renderGrid();
 }
 
-// -----------------------------------------------------------------------
-// TEXTO SEGÚN IDIOMA (cae a inglés si el campo *Es está vacío)
-// -----------------------------------------------------------------------
 function texto(en, es) {
   if (idioma === 'es' && es && es.trim() !== '') return es;
   return en || '';
 }
 
-// -----------------------------------------------------------------------
-// CARGA DE CESTAS DESDE FIRESTORE (REST, sin SDK)
-// -----------------------------------------------------------------------
 function parseFirestoreDoc(doc) {
   const f = doc.fields || {};
   const get = (k, type = 'stringValue') => f[k] ? f[k][type] : undefined;
@@ -349,9 +317,6 @@ async function cargarCestas() {
   }
 }
 
-// -----------------------------------------------------------------------
-// FILTROS DE CATEGORÍA
-// -----------------------------------------------------------------------
 function renderFiltros() {
   const cont = document.getElementById('category-filters');
   const categorias = ['Todas', ...new Set(cestas.map(c => c.categoria).filter(Boolean))];
@@ -367,9 +332,6 @@ function renderFiltros() {
   });
 }
 
-// -----------------------------------------------------------------------
-// GRID DE CESTAS
-// -----------------------------------------------------------------------
 function renderGrid() {
   const grid = document.getElementById('grid');
   const filtradas = categoriaActiva === 'Todas'
@@ -389,9 +351,6 @@ function renderGrid() {
   `).join('');
 }
 
-// -----------------------------------------------------------------------
-// MODAL DE DETALLE + CARRUSEL DE FOTOS (varios estilos, mismo precio)
-// -----------------------------------------------------------------------
 let carruselFotos = [];
 let carruselIndex = 0;
 let touchStartX = 0;
@@ -429,7 +388,6 @@ function renderCarrusel() {
     `<span class="dot ${i === carruselIndex ? 'active' : ''}" onclick="carruselIrA(${i})"></span>`
   ).join('');
 
-  // Ocultar flechas y puntos si solo hay una foto (un solo estilo)
   const mostrarControles = carruselFotos.length > 1;
   controles.forEach(b => b.style.display = mostrarControles ? 'flex' : 'none');
   dots.style.display = mostrarControles ? 'flex' : 'none';
@@ -445,7 +403,6 @@ function carruselIrA(i) {
   renderCarrusel();
 }
 
-// Deslizar con el dedo (swipe) en móvil
 function carruselTouchStart(e) {
   touchStartX = e.changedTouches[0].screenX;
 }
@@ -461,7 +418,6 @@ function cerrarModal() {
   document.getElementById('modal').classList.remove('active');
 }
 
-// Subtabs dentro del modal
 document.querySelectorAll('.subtab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.subtab-btn').forEach(b => b.classList.remove('active'));
@@ -471,7 +427,6 @@ document.querySelectorAll('.subtab-btn').forEach(btn => {
   });
 });
 
-// Tabs principales
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -490,9 +445,6 @@ function compartir() {
   }
 }
 
-// -----------------------------------------------------------------------
-// INIT
-// -----------------------------------------------------------------------
 (async function init() {
   await detectarMercado();
   aplicarConfigMercado();
