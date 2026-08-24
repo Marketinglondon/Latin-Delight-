@@ -47,7 +47,11 @@
   .hero img { width: 100%; object-fit: cover; }
 
   .location-banner {
-    background: var(--morado-claro); text-align: center; padding: 8px; font-size: 14px; color: var(--morado-oscuro);
+    background: var(--morado-claro); text-align: center; padding: 8px 12px; font-size: 14px; color: var(--morado-oscuro);
+    display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap;
+  }
+  .location-banner .switch-link {
+    font-size: 12px; text-decoration: underline; cursor: pointer; color: var(--morado-oscuro); opacity: 0.75;
   }
 
   .tabs { display: flex; overflow-x: auto; background: var(--turquesa); }
@@ -166,7 +170,10 @@
   <img src="assets/icon/hero-full.png" alt="Latin Delight baskets">
 </div>
 
-<div class="location-banner" id="location-banner">🇬🇧 London - England</div>
+<div class="location-banner">
+  <span id="location-text">🇬🇧 London - England</span>
+  <span class="switch-link" id="switch-market-link" onclick="cambiarMercadoManual()"></span>
+</div>
 
 <div class="tabs">
   <button class="tab-btn active" data-tab="baskets">Gift Baskets</button>
@@ -243,6 +250,9 @@ let categoriaActiva = 'Todas';
 
 document.getElementById('year').textContent = new Date().getFullYear();
 
+// -----------------------------------------------------------------------
+// DETECCIÓN DE MERCADO (respeta elección manual guardada)
+// -----------------------------------------------------------------------
 async function detectarMercado() {
   const guardado = localStorage.getItem('ld_mercado');
   if (guardado) { mercado = guardado; return; }
@@ -254,6 +264,16 @@ async function detectarMercado() {
   }
 }
 
+// Cambia manualmente entre UK y CO, guarda la elección y recarga los datos
+function cambiarMercadoManual() {
+  mercado = mercado === 'UK' ? 'CO' : 'UK';
+  localStorage.setItem('ld_mercado', mercado);
+  idioma = IDIOMA_DEFECTO[mercado];
+  localStorage.setItem('ld_idioma', idioma);
+  aplicarConfigMercado();
+  cargarCestas();
+}
+
 function aplicarConfigMercado() {
   idioma = localStorage.getItem('ld_idioma') || IDIOMA_DEFECTO[mercado];
 
@@ -261,8 +281,11 @@ function aplicarConfigMercado() {
   const esBilingue = IDIOMAS_POR_MERCADO[mercado].length > 1;
   btnIdioma.style.display = esBilingue ? 'inline-block' : 'none';
 
-  const banner = document.getElementById('location-banner');
-  banner.textContent = mercado === 'CO' ? '🇨🇴 Palmira - Colombia' : '🇬🇧 London - England';
+  document.getElementById('location-text').textContent =
+    mercado === 'CO' ? '🇨🇴 Palmira - Colombia' : '🇬🇧 London - England';
+
+  document.getElementById('switch-market-link').textContent =
+    mercado === 'CO' ? '· View UK catalog' : '· Ver catálogo Colombia';
 
   const numero = NUMEROS[mercado];
   document.getElementById('contact-whatsapp').href = `https://wa.me/${numero}`;
@@ -274,11 +297,17 @@ function toggleIdioma() {
   renderGrid();
 }
 
+// -----------------------------------------------------------------------
+// TEXTO SEGÚN IDIOMA (cae a inglés si el campo *Es está vacío)
+// -----------------------------------------------------------------------
 function texto(en, es) {
   if (idioma === 'es' && es && es.trim() !== '') return es;
   return en || '';
 }
 
+// -----------------------------------------------------------------------
+// CARGA DE CESTAS DESDE FIRESTORE (REST, sin SDK)
+// -----------------------------------------------------------------------
 function parseFirestoreDoc(doc) {
   const f = doc.fields || {};
   const get = (k, type = 'stringValue') => f[k] ? f[k][type] : undefined;
@@ -317,6 +346,9 @@ async function cargarCestas() {
   }
 }
 
+// -----------------------------------------------------------------------
+// FILTROS DE CATEGORÍA
+// -----------------------------------------------------------------------
 function renderFiltros() {
   const cont = document.getElementById('category-filters');
   const categorias = ['Todas', ...new Set(cestas.map(c => c.categoria).filter(Boolean))];
@@ -332,6 +364,9 @@ function renderFiltros() {
   });
 }
 
+// -----------------------------------------------------------------------
+// GRID DE CESTAS
+// -----------------------------------------------------------------------
 function renderGrid() {
   const grid = document.getElementById('grid');
   const filtradas = categoriaActiva === 'Todas'
@@ -351,6 +386,9 @@ function renderGrid() {
   `).join('');
 }
 
+// -----------------------------------------------------------------------
+// MODAL DE DETALLE + CARRUSEL DE FOTOS
+// -----------------------------------------------------------------------
 let carruselFotos = [];
 let carruselIndex = 0;
 let touchStartX = 0;
@@ -418,6 +456,7 @@ function cerrarModal() {
   document.getElementById('modal').classList.remove('active');
 }
 
+// Subtabs dentro del modal
 document.querySelectorAll('.subtab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.subtab-btn').forEach(b => b.classList.remove('active'));
@@ -427,6 +466,7 @@ document.querySelectorAll('.subtab-btn').forEach(btn => {
   });
 });
 
+// Tabs principales
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -445,6 +485,9 @@ function compartir() {
   }
 }
 
+// -----------------------------------------------------------------------
+// INIT
+// -----------------------------------------------------------------------
 (async function init() {
   await detectarMercado();
   aplicarConfigMercado();
