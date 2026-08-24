@@ -66,6 +66,22 @@
   .tab-content { display: none; padding: 16px; }
   .tab-content.active { display: block; }
 
+  /* Lista desplegable de ocasiones por categoría */
+  .occasion-list { display: flex; flex-direction: column; gap: 10px; }
+  .occasion-list button {
+    padding: 14px 16px; border-radius: 12px; border: 1px solid var(--morado-claro);
+    background: white; color: var(--morado-oscuro); font-size: 15px; text-align: left;
+    cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  }
+  .occasion-list button:active { background: var(--morado-claro); }
+  .occasion-list button .arrow { color: var(--turquesa); font-size: 18px; }
+
+  .back-link {
+    display: inline-flex; align-items: center; gap: 4px; color: var(--turquesa);
+    font-size: 13px; margin-bottom: 14px; cursor: pointer; text-decoration: underline;
+  }
+
   .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
   @media (min-width: 700px) { .grid { grid-template-columns: repeat(4, 1fr); } }
   @media (min-width: 1100px) { .grid { grid-template-columns: repeat(5, 1fr); } }
@@ -245,7 +261,13 @@
 </div>
 
 <div class="tab-content active" id="tab-productos">
-  <div class="grid" id="grid"></div>
+  <div id="occasion-list-wrapper" style="display:none">
+    <div class="occasion-list" id="occasion-list"></div>
+  </div>
+  <div id="grid-wrapper" style="display:none">
+    <span class="back-link" id="back-to-occasions" onclick="volverAOcasiones()">‹ Back to occasions</span>
+    <div class="grid" id="grid"></div>
+  </div>
 </div>
 
 <div class="tab-content" id="tab-about">
@@ -312,14 +334,20 @@ const IDIOMAS_POR_MERCADO = { UK: ['en', 'es'], CO: ['es'] };
 const IDIOMA_DEFECTO = { UK: 'en', CO: 'es' };
 const SIMBOLO_MONEDA = { UK: '£', CO: '$' };
 
-// Pestañas = categorías reales del negocio (deben coincidir EXACTO con
-// el campo "categoria" que se guarda desde admin.html)
-const CATEGORIA_ACTIVA_DEFECTO = 'Desayuno sorpresa';
+// Ocasiones específicas por categoría. Si una categoría no está aquí
+// (ej. "Adicionales"), se muestran las cestas directamente sin lista.
+const CATEGORIA_OCASIONES = {
+  'Desayuno sorpresa': ['Cumpleaños', 'Aniversarios', 'Baby Shower', 'Apoyo emocional', 'Fecha de calendario'],
+  'Frutas expresiva': ['Bandeja de frutas', 'Frutas y rosas', 'Fresas con chocolate', 'Fresas con rosas', 'Fresas con tortas'],
+  'Rosas': ['Caja de rosas', 'Buquet de rosas', 'Rosas con chocolate ferrero', 'Rosas con peluche'],
+  'Detalles': ['Globos y peluches', 'Orquídeas y globos helio', 'Tabla de quesos'],
+};
 
 let mercado = 'UK';
 let idioma = 'en';
 let cestas = [];
-let categoriaActiva = CATEGORIA_ACTIVA_DEFECTO;
+let categoriaActiva = null;
+let ocasionActiva = null;
 
 document.getElementById('year').textContent = new Date().getFullYear();
 
@@ -402,21 +430,70 @@ async function cargarCestas() {
     const data = await res.json();
     const todas = (data.documents || []).map(parseFirestoreDoc);
     cestas = todas.filter(c => c.pais === mercado && c.enStock);
-    renderGrid();
   } catch (e) {
-    document.getElementById('grid').innerHTML = '<p class="empty-category">Could not load baskets right now.</p>';
+    cestas = [];
   }
 }
 
 // -----------------------------------------------------------------------
-// GRID DE CESTAS — filtrada por la categoría de la pestaña activa
+// NAVEGACIÓN: categoría → lista de ocasiones → grilla filtrada
+// -----------------------------------------------------------------------
+function mostrarCategoria(cat) {
+  categoriaActiva = cat;
+  ocasionActiva = null;
+
+  const ocasiones = CATEGORIA_OCASIONES[cat];
+
+  if (ocasiones && ocasiones.length > 0) {
+    renderListaOcasiones(ocasiones);
+    document.getElementById('occasion-list-wrapper').style.display = 'block';
+    document.getElementById('grid-wrapper').style.display = 'none';
+  } else {
+    // Categoría sin ocasiones específicas (ej. Adicionales): mostrar todo directo
+    document.getElementById('occasion-list-wrapper').style.display = 'none';
+    document.getElementById('grid-wrapper').style.display = 'block';
+    document.getElementById('back-to-occasions').style.display = 'none';
+    renderGrid();
+  }
+}
+
+function renderListaOcasiones(ocasiones) {
+  const cont = document.getElementById('occasion-list');
+  cont.innerHTML = ocasiones.map(oc => `
+    <button onclick="seleccionarOcasion('${oc.replace(/'/g, "\\'")}')">
+      <span>${oc}</span>
+      <span class="arrow">›</span>
+    </button>
+  `).join('');
+}
+
+function seleccionarOcasion(oc) {
+  ocasionActiva = oc;
+  document.getElementById('occasion-list-wrapper').style.display = 'none';
+  document.getElementById('grid-wrapper').style.display = 'block';
+  document.getElementById('back-to-occasions').style.display = 'inline-flex';
+  renderGrid();
+}
+
+function volverAOcasiones() {
+  ocasionActiva = null;
+  document.getElementById('occasion-list-wrapper').style.display = 'block';
+  document.getElementById('grid-wrapper').style.display = 'none';
+}
+
+// -----------------------------------------------------------------------
+// GRID DE CESTAS — filtrada por categoría (+ ocasión si aplica)
 // -----------------------------------------------------------------------
 function renderGrid() {
   const grid = document.getElementById('grid');
-  const filtradas = cestas.filter(c => c.categoria === categoriaActiva);
+  let filtradas = cestas.filter(c => c.categoria === categoriaActiva);
+
+  if (ocasionActiva) {
+    filtradas = filtradas.filter(c => c.ocasion === ocasionActiva);
+  }
 
   if (filtradas.length === 0) {
-    grid.innerHTML = `<p class="empty-category">${idioma === 'es' ? 'No hay cestas en esta categoría todavía.' : 'No baskets in this category yet.'}</p>`;
+    grid.innerHTML = `<p class="empty-category">${idioma === 'es' ? 'No hay cestas disponibles todavía.' : 'No baskets available yet.'}</p>`;
     return;
   }
 
@@ -624,7 +701,6 @@ document.querySelectorAll('.subtab-btn').forEach(btn => {
   });
 });
 
-// Pestañas superiores: categorías de producto + About + Contact
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -636,11 +712,9 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       document.getElementById('tab-' + destino).classList.add('active');
     } else {
-      // Es una categoría de producto: mostrar la grilla y filtrar
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
       document.getElementById('tab-productos').classList.add('active');
-      categoriaActiva = destino;
-      renderGrid();
+      mostrarCategoria(destino);
     }
   });
 });
@@ -658,6 +732,7 @@ function compartir() {
   await detectarMercado();
   aplicarConfigMercado();
   await cargarCestas();
+  mostrarCategoria('Desayuno sorpresa');
 })();
 </script>
 </body>
