@@ -115,6 +115,15 @@
     background: #faf5fc; color: var(--morado-oscuro); font-size: 26px; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
   }
+
+  .field-label-row {
+    display: flex; justify-content: space-between; align-items: center; margin-top: 12px;
+  }
+  .field-label-row label { margin-top: 0; }
+  .btn-clear-field {
+    background: #fdecea; color: #c0392b; border: 1px solid #f5c6c0; border-radius: 6px;
+    padding: 4px 10px; font-size: 11px; font-weight: bold; cursor: pointer;
+  }
 </style>
 </head>
 <body>
@@ -197,12 +206,19 @@
       <textarea id="f-descripcionEs"></textarea>
     </div>
 
-    <label id="label-contenido">Contenido (una línea por ítem, para que salga como lista)</label>
+    <div class="field-label-row">
+      <label id="label-contenido" style="margin-top:0">Contenido (una línea por ítem)</label>
+      <button type="button" class="btn-clear-field" onclick="limpiarCampo('f-contenido')">🗑️ Limpiar</button>
+    </div>
     <textarea id="f-contenido" onblur="autotraducirCampo('f-contenido','f-contenidoEs')"></textarea>
     <div id="es-fields-contenido" class="es-only" style="display:none">
-      <label>Contenido (español) — autocompletado, editable</label>
+      <div class="field-label-row">
+        <label style="margin-top:0">Contenido (español) — autocompletado, editable</label>
+        <button type="button" class="btn-clear-field" onclick="limpiarCampo('f-contenidoEs')">🗑️ Limpiar</button>
+      </div>
       <textarea id="f-contenidoEs"></textarea>
     </div>
+    <div class="helper">Si el texto se ve raro (espacios extraños, huecos), toca "Limpiar" y vuelve a escribirlo directo aquí en vez de copiar/pegar desde otra app.</div>
 
     <div class="checkboxes">
       <label><input type="checkbox" id="f-globos"> Globos</label>
@@ -271,6 +287,12 @@ function actualizarOcasionesDisponibles(ocasionAConservar) {
   if (ocasionAConservar && ocasiones.includes(ocasionAConservar)) {
     select.value = ocasionAConservar;
   }
+}
+
+function limpiarCampo(idCampo) {
+  if (!confirm('¿Borrar todo el texto de este campo?')) return;
+  document.getElementById(idCampo).value = '';
+  document.getElementById(idCampo).focus();
 }
 
 async function verificarAcceso() {
