@@ -196,20 +196,31 @@
     width: 40px; height: 40px; font-size: 18px; cursor: pointer;
   }
 
-  .content-checklist { list-style: none; }
+  /* Checklist compacto: cada ítem en una sola línea, línea divisoria
+     delgada en vez de espacio en blanco entre ítems */
+  .content-checklist {
+    list-style: none;
+    background: #fafafa;
+    border-radius: 10px;
+    border: 1px solid #eee;
+    overflow: hidden;
+  }
   .content-checklist li {
-    display: flex; align-items: flex-start; gap: 8px; padding: 6px 0;
-    border-bottom: 1px solid #f0f0f0; cursor: pointer; user-select: none;
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer; user-select: none;
   }
   .content-checklist li:last-child { border-bottom: none; }
   .content-checklist .check-icon {
-    flex-shrink: 0; width: 20px; height: 20px; border-radius: 5px;
-    border: 2px solid var(--turquesa); display: flex; align-items: center; justify-content: center;
-    font-size: 12px; color: white; margin-top: 1px;
+    flex-shrink: 0; width: 18px; height: 18px; border-radius: 5px;
+    background: var(--turquesa); display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: white;
   }
   .content-checklist li.checked .check-icon { background: var(--turquesa); }
-  .content-checklist li.unchecked .check-icon { background: white; border-color: #ccc; }
+  .content-checklist li.unchecked .check-icon { background: #ddd; }
   .content-checklist li.unchecked span.item-text { color: #aaa; text-decoration: line-through; }
+  .content-checklist span.item-text { font-size: 14px; line-height: 1.3; }
 
   footer { text-align: center; padding: 20px; color: #999; font-size: 12px; }
 </style>
@@ -318,10 +329,6 @@ const IDIOMAS_POR_MERCADO = { UK: ['en', 'es'], CO: ['es'] };
 const IDIOMA_DEFECTO = { UK: 'en', CO: 'es' };
 const SIMBOLO_MONEDA = { UK: '£', CO: '$' };
 
-// Orden de categorías + ocasiones internas por categoría. El VALOR
-// (string) es el que se guarda/filtra en Firestore — nunca cambia.
-// Lo que sí cambia según idioma es el TEXTO que ve el cliente, definido
-// en CATEGORIA_LABELS y OCASION_LABELS más abajo.
 const CATEGORIAS_ORDEN = ['Desayuno sorpresa', 'Frutas expresiva', 'Rosas', 'Detalles', 'Adicionales'];
 
 const CATEGORIA_OCASIONES = {
@@ -366,9 +373,6 @@ function labelOcasion(oc) {
   return (OCASION_LABELS[oc] && OCASION_LABELS[oc][idioma]) || oc;
 }
 
-// -----------------------------------------------------------------------
-// Textos fijos de la interfaz (no product data), en ambos idiomas
-// -----------------------------------------------------------------------
 const UI_TEXT = {
   en: {
     share: 'Share',
@@ -409,7 +413,7 @@ let idioma = 'en';
 let cestas = [];
 let categoriaActiva = null;
 let ocasionActiva = null;
-let tabActiva = 'Desayuno sorpresa'; // puede ser una categoría, 'about' o 'contact'
+let tabActiva = 'Desayuno sorpresa';
 
 document.getElementById('year').textContent = new Date().getFullYear();
 
@@ -433,11 +437,6 @@ function cambiarMercadoManual() {
   cargarCestas();
 }
 
-// -----------------------------------------------------------------------
-// Renderiza las pestañas superiores (5 categorías + About + Contact)
-// con el texto traducido según idioma. Usa delegación de eventos, así
-// que solo se necesita un listener aunque el HTML se regenere.
-// -----------------------------------------------------------------------
 function renderTabs() {
   const cont = document.getElementById('tabs-container');
   const t = UI_TEXT[idioma];
@@ -469,9 +468,6 @@ document.getElementById('tabs-container').addEventListener('click', (e) => {
   }
 });
 
-// -----------------------------------------------------------------------
-// Aplica TODOS los textos fijos de la UI según el idioma activo
-// -----------------------------------------------------------------------
 function aplicarTraduccionEstatica() {
   const t = UI_TEXT[idioma];
 
