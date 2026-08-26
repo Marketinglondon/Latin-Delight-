@@ -196,6 +196,9 @@
     width: 40px; height: 40px; font-size: 18px; cursor: pointer;
   }
 
+  /* Lista simple de contenido: viñeta discreta, sin cuadritos de check.
+     Tocar un ítem lo atenúa y tacha para indicar "no incluir" en el
+     mensaje de WhatsApp */
   .content-checklist {
     list-style: none;
     background: #fafafa;
@@ -205,22 +208,23 @@
     max-height: 200px;
   }
   .content-checklist li {
-    display: flex; align-items: center; gap: 6px;
-    padding: 5px 10px;
-    min-height: 30px;
+    display: flex; align-items: center;
+    padding: 6px 12px;
+    min-height: 28px;
     border-bottom: 1px solid #eee;
     cursor: pointer; user-select: none;
   }
   .content-checklist li:last-child { border-bottom: none; }
-  .content-checklist .check-icon {
-    flex-shrink: 0; width: 16px; height: 16px; border-radius: 4px;
-    background: var(--turquesa); display: flex; align-items: center; justify-content: center;
-    font-size: 10px; color: white; line-height: 1;
+  .content-checklist li::before {
+    content: '•';
+    color: var(--turquesa);
+    margin-right: 8px;
+    font-size: 16px;
+    line-height: 1;
   }
-  .content-checklist li.checked .check-icon { background: var(--turquesa); }
-  .content-checklist li.unchecked .check-icon { background: #ddd; }
-  .content-checklist li.unchecked span.item-text { color: #aaa; text-decoration: line-through; }
-  .content-checklist span.item-text { font-size: 13px; line-height: 1.2; }
+  .content-checklist li.unchecked { opacity: 0.5; }
+  .content-checklist li.unchecked span.item-text { text-decoration: line-through; }
+  .content-checklist span.item-text { font-size: 13px; line-height: 1.2; color: #333; }
 
   footer { text-align: center; padding: 20px; color: #999; font-size: 12px; }
 </style>
@@ -669,7 +673,6 @@ function renderChecklistContenido() {
   }
   ul.innerHTML = itemsContenido.map((item, i) => `
     <li class="${item.marcado ? 'checked' : 'unchecked'}" onclick="alternarItemContenido(${i})">
-      <span class="check-icon">${item.marcado ? '✓' : ''}</span>
       <span class="item-text">${item.texto}</span>
     </li>
   `).join('');
