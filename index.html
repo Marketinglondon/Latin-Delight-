@@ -196,9 +196,8 @@
     width: 40px; height: 40px; font-size: 18px; cursor: pointer;
   }
 
-  /* Lista simple de contenido: viñeta discreta, sin cuadritos de check.
-     Tocar un ítem lo atenúa y tacha para indicar "no incluir" en el
-     mensaje de WhatsApp */
+  /* Lista simple de contenido: solo viñeta y texto, sin checkbox ni
+     interactividad. Filas bajas con scroll interno si hay muchos ítems */
   .content-checklist {
     list-style: none;
     background: #fafafa;
@@ -212,7 +211,6 @@
     padding: 6px 12px;
     min-height: 28px;
     border-bottom: 1px solid #eee;
-    cursor: pointer; user-select: none;
   }
   .content-checklist li:last-child { border-bottom: none; }
   .content-checklist li::before {
@@ -222,8 +220,6 @@
     font-size: 16px;
     line-height: 1;
   }
-  .content-checklist li.unchecked { opacity: 0.5; }
-  .content-checklist li.unchecked span.item-text { text-decoration: line-through; }
   .content-checklist span.item-text { font-size: 13px; line-height: 1.2; color: #333; }
 
   footer { text-align: center; padding: 20px; color: #999; font-size: 12px; }
@@ -655,7 +651,7 @@ function abrirModal(id) {
     .split('\n')
     .map(l => l.trim())
     .filter(l => l.length > 0)
-    .map(l => ({ texto: l, marcado: true }));
+    .map(l => ({ texto: l }));
   renderChecklistContenido();
 
   document.getElementById('sub-desc').textContent = texto(c.descripcion, c.descripcionEs);
@@ -671,16 +667,11 @@ function renderChecklistContenido() {
     ul.innerHTML = '<li style="border:none; color:#999;">—</li>';
     return;
   }
-  ul.innerHTML = itemsContenido.map((item, i) => `
-    <li class="${item.marcado ? 'checked' : 'unchecked'}" onclick="alternarItemContenido(${i})">
+  ul.innerHTML = itemsContenido.map((item) => `
+    <li>
       <span class="item-text">${item.texto}</span>
     </li>
   `).join('');
-}
-
-function alternarItemContenido(index) {
-  itemsContenido[index].marcado = !itemsContenido[index].marcado;
-  renderChecklistContenido();
 }
 
 function renderCarrusel() {
@@ -805,7 +796,7 @@ function enviarPedidoWhatsApp() {
   if (itemsContenido.length > 0) {
     lineas.push(idioma === 'es' ? 'Contenido:' : "What's included:");
     itemsContenido.forEach(item => {
-      lineas.push(`${item.marcado ? '✓' : '❌'} ${item.texto}`);
+      lineas.push(`- ${item.texto}`);
     });
   }
 
