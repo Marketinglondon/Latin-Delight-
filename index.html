@@ -190,6 +190,38 @@
   }
 
   footer { text-align: center; padding: 20px; color: #999; font-size: 12px; }
+
+  .order-panel-wrapper {
+    position: fixed; top: 0; left: 0; height: 100%;
+    display: flex; z-index: 600;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+  .order-panel-wrapper.active { transform: translateX(0); }
+  .order-panel {
+    width: 280px; max-width: 82vw; height: 100%;
+    background: white; padding: 20px 16px; overflow-y: auto;
+    box-shadow: 3px 0 12px rgba(0,0,0,0.15);
+  }
+  .order-panel-title {
+    font-size: 16px; font-weight: bold; color: var(--morado-oscuro); margin-bottom: 16px;
+  }
+  .order-field-label {
+    font-size: 13px; font-weight: bold; color: var(--morado-oscuro);
+    margin-top: 16px; margin-bottom: 6px;
+  }
+  .order-input {
+    width: 100%; padding: 9px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;
+  }
+  .content-list {
+    margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.7; color: #333;
+  }
+  .order-panel-tab {
+    align-self: center; writing-mode: vertical-rl; background: white;
+    border: none; border-radius: 0 10px 10px 0; padding: 16px 8px;
+    font-size: 12px; font-weight: bold; color: var(--turquesa); cursor: pointer;
+    box-shadow: 3px 0 8px rgba(0,0,0,0.1);
+  }
 </style>
 </head>
 <body>
@@ -252,9 +284,6 @@
       <div class="carousel-dots" id="carousel-dots"></div>
     </div>
 
-    <div class="image-picker-label" id="image-picker-label" style="display:none">Choose your favourite image</div>
-    <div class="image-picker" id="image-picker"></div>
-
     <div class="carousel-actions">
       <button id="btn-share-photo" onclick="compartirFotoActual()">📤 Share this photo</button>
     </div>
@@ -263,8 +292,28 @@
       <h2 id="modal-nombre"></h2>
       <div class="price" id="modal-precio"></div>
       <div class="subtab-content active" id="sub-desc"></div>
+    </div>
+  </div>
+
+  <div class="order-panel-wrapper" id="order-panel-wrapper">
+    <div class="order-panel">
+      <div class="order-panel-title" id="order-panel-title">Order details</div>
+
+      <div class="image-picker-label" id="image-picker-label" style="display:none">Choose your favourite image</div>
+      <div class="image-picker" id="image-picker"></div>
+
+      <div class="order-field-label" id="label-delivery-date">📅 Delivery date</div>
+      <input type="date" id="delivery-date" class="order-input">
+
+      <div class="order-field-label" id="label-delivery-time">🕒 Delivery time</div>
+      <input type="time" id="delivery-time" class="order-input">
+
+      <div class="order-field-label" id="label-included">What's included</div>
+      <ol class="content-list" id="content-list"></ol>
+
       <button class="whatsapp-btn" id="btn-order-whatsapp" onclick="enviarPedidoWhatsApp()">Order on WhatsApp</button>
     </div>
+    <button class="order-panel-tab" id="order-panel-tab" onclick="togglePanel()">Order details</button>
   </div>
 </div>
 
@@ -349,6 +398,10 @@ const UI_TEXT = {
     backToOccasions: '‹ Back to occasions',
     noBaskets: 'No baskets available yet.',
     couldNotLoad: 'Could not load baskets right now.',
+    orderDetails: 'Order details',
+    deliveryDate: '📅 Delivery date',
+    deliveryTime: '🕒 Delivery time',
+    included: "What's included",
   },
   es: {
     share: 'Compartir',
@@ -363,6 +416,10 @@ const UI_TEXT = {
     backToOccasions: '‹ Volver a ocasiones',
     noBaskets: 'No hay cestas disponibles todavía.',
     couldNotLoad: 'No se pudieron cargar las cestas en este momento.',
+    orderDetails: 'Detalles del pedido',
+    deliveryDate: '📅 Fecha de entrega',
+    deliveryTime: '🕒 Hora de entrega',
+    included: 'Contenido',
   },
 };
 
@@ -436,6 +493,11 @@ function aplicarTraduccionEstatica() {
   document.getElementById('btn-share-photo').textContent = t.sharePhoto;
   document.getElementById('btn-order-whatsapp').textContent = t.orderWhatsapp;
   document.getElementById('back-to-occasions').textContent = t.backToOccasions;
+  document.getElementById('order-panel-title').textContent = t.orderDetails;
+  document.getElementById('order-panel-tab').textContent = t.orderDetails;
+  document.getElementById('label-delivery-date').textContent = t.deliveryDate;
+  document.getElementById('label-delivery-time').textContent = t.deliveryTime;
+  document.getElementById('label-included').textContent = t.included;
 
   renderTabs();
 }
@@ -493,6 +555,8 @@ function parseFirestoreDoc(doc) {
     presentacion: get('presentacion'),
     descripcion: get('descripcion'),
     descripcionEs: get('descripcionEs'),
+    contenido: get('contenido'),
+    contenidoEs: get('contenidoEs'),
     pais: get('pais') || 'UK',
     precioVenta: parseFloat(get('precioVenta', 'doubleValue') ?? get('precioVenta', 'integerValue') ?? 0),
     enStock: getBool('enStock'),
@@ -584,6 +648,7 @@ let carruselFotos = [];
 let carruselIndex = 0;
 let touchStartX = 0;
 let estiloSeleccionado = null;
+let itemsContenido = [];
 
 function abrirModal(id) {
   const c = cestas.find(x => x.id === id);
@@ -601,9 +666,43 @@ function abrirModal(id) {
 
   document.getElementById('sub-desc').textContent = texto(c.descripcion, c.descripcionEs);
 
+  const textoContenido = texto(c.contenido, c.contenidoEs);
+  itemsContenido = textoContenido
+    .split(/\r?\n+/)
+    .map(l => l.replace(/[\u200B-\u200F\uFEFF\u00A0\u2028\u2029]/g, '').trim())
+    .filter(l => l.length > 0);
+  renderContentList();
+
+  document.getElementById('delivery-date').value = '';
+  document.getElementById('delivery-time').value = '';
+  document.getElementById('order-panel-wrapper').classList.remove('active');
+
   aplicarTraduccionEstatica();
 
   document.getElementById('modal').classList.add('active');
+}
+
+function renderContentList() {
+  const ol = document.getElementById('content-list');
+  ol.innerHTML = '';
+  if (itemsContenido.length === 0) {
+    const li = document.createElement('li');
+    li.textContent = '—';
+    li.style.listStyle = 'none';
+    li.style.marginLeft = '-20px';
+    li.style.color = '#999';
+    ol.appendChild(li);
+    return;
+  }
+  itemsContenido.forEach(texto => {
+    const li = document.createElement('li');
+    li.textContent = texto;
+    ol.appendChild(li);
+  });
+}
+
+function togglePanel() {
+  document.getElementById('order-panel-wrapper').classList.toggle('active');
 }
 
 function renderCarrusel() {
@@ -707,6 +806,7 @@ async function compartirFotoActual() {
 
 function cerrarModal() {
   document.getElementById('modal').classList.remove('active');
+  document.getElementById('order-panel-wrapper').classList.remove('active');
 }
 
 function enviarPedidoWhatsApp() {
@@ -723,6 +823,23 @@ function enviarPedidoWhatsApp() {
       ? `Imagen elegida: ${estiloSeleccionado + 1} de ${carruselFotos.length}`
       : `Chosen image: ${estiloSeleccionado + 1} of ${carruselFotos.length}`);
     lineas.push(idioma === 'es' ? `Enlace de la imagen: ${urlImagen}` : `Image link: ${urlImagen}`);
+  }
+
+  const fecha = document.getElementById('delivery-date').value;
+  const hora = document.getElementById('delivery-time').value;
+
+  if (fecha) {
+    lineas.push(idioma === 'es' ? `Fecha de entrega: ${fecha}` : `Delivery date: ${fecha}`);
+  }
+  if (hora) {
+    lineas.push(idioma === 'es' ? `Hora de entrega: ${hora}` : `Delivery time: ${hora}`);
+  }
+
+  if (itemsContenido.length > 0) {
+    lineas.push(idioma === 'es' ? 'Contenido:' : "What's included:");
+    itemsContenido.forEach((item, i) => {
+      lineas.push(`${i + 1}. ${item}`);
+    });
   }
 
   const mensaje = encodeURIComponent(lineas.join('\n'));
