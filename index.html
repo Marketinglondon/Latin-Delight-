@@ -642,11 +642,12 @@ function mostrarCategoria(cat) {
 
   const ocasiones = CATEGORIA_OCASIONES[cat];
 
-  if (ocasiones && ocasiones.length > 0) {
+  if (ocasiones && ocasiones.length > 1) {
     renderListaOcasiones(ocasiones);
     document.getElementById('occasion-list-wrapper').style.display = 'block';
     document.getElementById('grid-wrapper').style.display = 'none';
   } else {
+    ocasionActiva = (ocasiones && ocasiones.length === 1) ? ocasiones[0] : null;
     document.getElementById('occasion-list-wrapper').style.display = 'none';
     document.getElementById('grid-wrapper').style.display = 'block';
     document.getElementById('back-to-occasions').style.display = 'none';
