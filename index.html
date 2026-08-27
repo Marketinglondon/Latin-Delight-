@@ -302,6 +302,10 @@
         <div class="order-field-label" id="label-delivery-time">🕒 Delivery time</div>
         <input type="time" id="delivery-time" class="order-input">
 
+        <div class="order-field-label" id="label-zona" style="display:none">📍 Delivery zone</div>
+        <select id="delivery-zone" class="order-input" style="display:none" onchange="actualizarTotalPedido()"></select>
+        <div id="delivery-total-box" style="margin-top:8px; font-size:13px; font-weight:bold; color:var(--turquesa);"></div>
+
         <div class="order-field-label" id="label-included">What's included</div>
         <ol class="content-list" id="content-list"></ol>
       </div>
@@ -324,6 +328,7 @@
 <script>
 const PROJECT_ID = 'latin-delight';
 const FIRESTORE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/cestas`;
+const ZONAS_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/zonasEnvio`;
 
 const NUMEROS = {
   UK: '447446830987',
@@ -395,6 +400,10 @@ const UI_TEXT = {
     orderDetails: 'Order details',
     deliveryDate: '📅 Delivery date',
     deliveryTime: '🕒 Delivery time',
+    deliveryZone: '📍 Delivery zone',
+    chooseZone: '-- Choose your zone --',
+    deliveryCostLine: 'Delivery cost',
+    totalLine: 'Total',
     included: "What's included",
   },
   es: {
@@ -413,6 +422,10 @@ const UI_TEXT = {
     orderDetails: 'Detalles del pedido',
     deliveryDate: '📅 Fecha de entrega',
     deliveryTime: '🕒 Hora de entrega',
+    deliveryZone: '📍 Zona de entrega',
+    chooseZone: '-- Elige tu zona --',
+    deliveryCostLine: 'Costo de domicilio',
+    totalLine: 'Total',
     included: 'Contenido',
   },
 };
@@ -420,6 +433,7 @@ const UI_TEXT = {
 let mercado = 'UK';
 let idioma = 'en';
 let cestas = [];
+let zonasEnvio = [];
 let categoriaActiva = null;
 let ocasionActiva = null;
 let tabActiva = 'Desayuno sorpresa';
@@ -490,6 +504,7 @@ function aplicarTraduccionEstatica() {
   document.getElementById('order-toggle-label').textContent = `📦 ${t.orderDetails}`;
   document.getElementById('label-delivery-date').textContent = t.deliveryDate;
   document.getElementById('label-delivery-time').textContent = t.deliveryTime;
+  document.getElementById('label-zona').textContent = t.deliveryZone;
   document.getElementById('label-included').textContent = t.included;
 
   renderTabs();
@@ -565,6 +580,23 @@ async function cargarCestas() {
     cestas = todas.filter(c => c.pais === mercado && c.enStock);
   } catch (e) {
     cestas = [];
+  }
+}
+
+async function cargarZonas() {
+  try {
+    const res = await fetch(ZONAS_URL);
+    const data = await res.json();
+    zonasEnvio = (data.documents || []).map(doc => {
+      const f = doc.fields || {};
+      return {
+        id: doc.name.split('/').pop(),
+        zona: f.zona ? f.zona.stringValue : '',
+        costo: f.costo ? parseFloat(f.costo.doubleValue ?? f.costo.integerValue ?? 0) : 0,
+      };
+    }).sort((a, b) => a.costo - b.costo || a.zona.localeCompare(b.zona));
+  } catch (e) {
+    zonasEnvio = [];
   }
 }
 
@@ -671,9 +703,45 @@ function abrirModal(id) {
   document.getElementById('order-details').classList.remove('open');
   document.getElementById('order-toggle-btn').classList.remove('open');
 
+  const esUK = mercado === 'UK';
+  document.getElementById('label-zona').style.display = esUK ? 'block' : 'none';
+  document.getElementById('delivery-zone').style.display = esUK ? 'block' : 'none';
+  renderZoneSelect();
+  document.getElementById('delivery-zone').value = '';
+  document.getElementById('delivery-total-box').textContent = '';
+
   aplicarTraduccionEstatica();
 
   document.getElementById('modal').classList.add('active');
+}
+
+function renderZoneSelect() {
+  const sel = document.getElementById('delivery-zone');
+  const t = UI_TEXT[idioma];
+  sel.innerHTML = `<option value="">${t.chooseZone}</option>` + zonasEnvio.map(z =>
+    `<option value="${z.zona.replace(/"/g, '&quot;')}">${z.zona} — ${SIMBOLO_MONEDA[mercado]}${z.costo.toFixed(2)}</option>`
+  ).join('');
+}
+
+function actualizarTotalPedido() {
+  const box = document.getElementById('delivery-total-box');
+  const zonaNombre = document.getElementById('delivery-zone').value;
+  const t = UI_TEXT[idioma];
+
+  if (!zonaNombre || !cestaActual) {
+    box.textContent = '';
+    return;
+  }
+
+  const zona = zonasEnvio.find(z => z.zona === zonaNombre);
+  if (!zona) {
+    box.textContent = '';
+    return;
+  }
+
+  const simbolo = SIMBOLO_MONEDA[mercado];
+  const total = cestaActual.precioVenta + zona.costo;
+  box.textContent = `${t.deliveryCostLine}: ${simbolo}${zona.costo.toFixed(2)} — ${t.totalLine}: ${simbolo}${total.toFixed(2)}`;
 }
 
 function renderContentList() {
@@ -829,6 +897,22 @@ function enviarPedidoWhatsApp() {
     lineas.push(idioma === 'es' ? `Hora de entrega: ${hora}` : `Delivery time: ${hora}`);
   }
 
+  const zonaNombre = document.getElementById('delivery-zone').value;
+  if (zonaNombre) {
+    const zona = zonasEnvio.find(z => z.zona === zonaNombre);
+    if (zona) {
+      const simbolo = SIMBOLO_MONEDA[mercado];
+      const total = cestaActual.precioVenta + zona.costo;
+      lineas.push(idioma === 'es' ? `Zona de entrega: ${zonaNombre}` : `Delivery zone: ${zonaNombre}`);
+      lineas.push(idioma === 'es'
+        ? `Costo de domicilio: ${simbolo}${zona.costo.toFixed(2)}`
+        : `Delivery cost: ${simbolo}${zona.costo.toFixed(2)}`);
+      lineas.push(idioma === 'es'
+        ? `Total (producto + domicilio): ${simbolo}${total.toFixed(2)}`
+        : `Total (product + delivery): ${simbolo}${total.toFixed(2)}`);
+    }
+  }
+
   if (itemsContenido.length > 0) {
     lineas.push(idioma === 'es' ? 'Contenido:' : "What's included:");
     itemsContenido.forEach((item, i) => {
@@ -854,6 +938,7 @@ function compartir() {
   renderTabs();
   aplicarConfigMercado();
   await cargarCestas();
+  await cargarZonas();
   mostrarCategoria('Desayuno sorpresa');
 })();
 </script>
