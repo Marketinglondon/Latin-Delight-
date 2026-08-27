@@ -424,14 +424,14 @@ const UI_TEXT = {
     whatsappUs: 'Escríbenos por WhatsApp',
     aboutTab: 'Nosotros',
     contactTab: 'Contacto',
-    aboutText: 'Latin Delight Ltd. crea cestas de regalo que combinan globos, flores, empaques decorativos y una variedad de opciones de desayuno, snacks, comidas y bebidas — algunas con accesorios decorativos especiales incluidos.',
-    contactText: 'Escríbenos directamente por WhatsApp para hacer un pedido o preguntar por cestas personalizadas.',
+    aboutText: 'Latin Delight Ltd. crea carritos de compras de regalo que combinan globos, flores, empaques decorativos y una variedad de opciones de desayuno, snacks, comidas y bebidas — algunas con accesorios decorativos especiales incluidos.',
+    contactText: 'Escríbenos directamente por WhatsApp para hacer un pedido o preguntar por carritos de compras personalizados.',
     chooseImage: 'Elige tu imagen favorita',
     sharePhoto: '📤 Compartir esta foto',
     orderWhatsapp: 'Pedir por WhatsApp',
     backToOccasions: '‹ Volver a ocasiones',
-    noBaskets: 'No hay cestas disponibles todavía.',
-    couldNotLoad: 'No se pudieron cargar las cestas en este momento.',
+    noBaskets: 'No hay carritos de compras disponibles todavía.',
+    couldNotLoad: 'No se pudieron cargar los carritos de compras en este momento.',
     orderDetails: 'Detalles del pedido',
     deliveryDate: '📅 Fecha de entrega',
     deliveryTime: '🕒 Hora de entrega',
@@ -669,6 +669,8 @@ function renderGrid() {
   if (ocasionActiva) {
     filtradas = filtradas.filter(c => c.ocasion === ocasionActiva);
   }
+
+  filtradas = filtradas.slice().sort((a, b) => b.precioVenta - a.precioVenta);
 
   if (filtradas.length === 0) {
     grid.innerHTML = `<p class="empty-category">${UI_TEXT[idioma].noBaskets}</p>`;
