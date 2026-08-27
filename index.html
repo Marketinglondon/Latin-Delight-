@@ -226,8 +226,9 @@
     Capture a smile<br>on your love one's face
   </div>
   <button id="splash-btn" onclick="document.getElementById('splash').style.display='none'">
-    Discover your basket / Descubre tu cesta
+    Discover your breakfast
   </button>
+  <button id="btn-idioma-splash" onclick="toggleIdioma()" style="margin-top:14px; background:none; border:1px solid var(--turquesa); color:var(--turquesa); border-radius:20px; padding:6px 16px; cursor:pointer; font-size:13px;">EN / ES</button>
 </div>
 
 <header>
@@ -300,7 +301,7 @@
         <input type="date" id="delivery-date" class="order-input">
 
         <div class="order-field-label" id="label-delivery-time">🕒 Delivery time</div>
-        <input type="time" id="delivery-time" class="order-input">
+        <select id="delivery-time" class="order-input"></select>
 
         <div class="order-field-label" id="label-zona" style="display:none">📍 Delivery zone</div>
         <select id="delivery-zone" class="order-input" style="display:none" onchange="actualizarTotalPedido()"></select>
@@ -402,9 +403,12 @@ const UI_TEXT = {
     deliveryTime: '🕒 Delivery time',
     deliveryZone: '📍 Delivery zone',
     chooseZone: '-- Choose your zone --',
+    chooseTime: '-- Choose a time --',
     deliveryCostLine: 'Delivery cost',
     totalLine: 'Total',
     included: "What's included",
+    splashTagline: "Capture a smile<br>on your love one's face",
+    splashButton: 'Discover your breakfast',
   },
   es: {
     share: 'Compartir',
@@ -424,9 +428,12 @@ const UI_TEXT = {
     deliveryTime: '🕒 Hora de entrega',
     deliveryZone: '📍 Zona de entrega',
     chooseZone: '-- Elige tu zona --',
+    chooseTime: '-- Elige una hora --',
     deliveryCostLine: 'Costo de domicilio',
     totalLine: 'Total',
     included: 'Contenido',
+    splashTagline: 'Captura una sonrisa<br>en el rostro de tu ser querido',
+    splashButton: 'Descubre tu desayuno',
   },
 };
 
@@ -506,6 +513,8 @@ function aplicarTraduccionEstatica() {
   document.getElementById('label-delivery-time').textContent = t.deliveryTime;
   document.getElementById('label-zona').textContent = t.deliveryZone;
   document.getElementById('label-included').textContent = t.included;
+  document.getElementById('splash-text').innerHTML = t.splashTagline;
+  document.getElementById('splash-btn').textContent = t.splashButton;
 
   renderTabs();
 }
@@ -699,6 +708,7 @@ function abrirModal(id) {
   renderContentList();
 
   document.getElementById('delivery-date').value = '';
+  renderTimeSlots();
   document.getElementById('delivery-time').value = '';
   document.getElementById('order-details').classList.remove('open');
   document.getElementById('order-toggle-btn').classList.remove('open');
@@ -720,6 +730,20 @@ function renderZoneSelect() {
   const t = UI_TEXT[idioma];
   sel.innerHTML = `<option value="">${t.chooseZone}</option>` + zonasEnvio.map(z =>
     `<option value="${z.zona.replace(/"/g, '&quot;')}">${z.zona} — ${SIMBOLO_MONEDA[mercado]}${z.costo.toFixed(2)}</option>`
+  ).join('');
+}
+
+const FRANJAS_HORARIO = [
+  '6:00 - 6:30', '7:00 - 7:30', '8:00 - 8:30', '9:00 - 9:30', '10:00 - 10:30',
+  '11:00 - 11:30', '12:00 - 12:30', '13:00 - 13:30', '14:00 - 14:30',
+  '15:00 - 15:30', '16:00 - 16:30', '17:00 - 17:30', '18:00 - 18:30',
+];
+
+function renderTimeSlots() {
+  const sel = document.getElementById('delivery-time');
+  const t = UI_TEXT[idioma];
+  sel.innerHTML = `<option value="">${t.chooseTime}</option>` + FRANJAS_HORARIO.map(f =>
+    `<option value="${f}">${f}</option>`
   ).join('');
 }
 
