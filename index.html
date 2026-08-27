@@ -191,40 +191,31 @@
 
   footer { text-align: center; padding: 20px; color: #999; font-size: 12px; }
 
-  .order-panel-wrapper {
-    position: fixed; top: 0; left: 0; height: 100%;
-    display: flex; z-index: 600;
+  .order-toggle-btn {
+    width: 100%; padding: 12px; background: #f5f0f7; border: 1px solid var(--morado-claro);
+    border-radius: 10px; font-size: 14px; font-weight: bold; color: var(--morado-oscuro);
+    cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+    margin-top: 14px;
   }
-  .order-panel {
-    width: 280px; max-width: 82vw; height: 100%;
-    background: white; padding: 20px 16px; overflow-y: auto;
-    box-shadow: 3px 0 12px rgba(0,0,0,0.15);
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
+  .order-toggle-btn .chevron { transition: transform 0.25s ease; font-size: 14px; }
+  .order-toggle-btn.open .chevron { transform: rotate(180deg); }
+
+  .order-details {
+    display: none; margin-top: 12px; padding: 14px; background: #f5f0f7; border-radius: 10px;
   }
-  .order-panel-wrapper.active .order-panel { transform: translateX(0); }
-  .order-panel-title {
-    font-size: 16px; font-weight: bold; color: var(--morado-oscuro); margin-bottom: 16px;
-  }
+  .order-details.open { display: block; }
   .order-field-label {
     font-size: 13px; font-weight: bold; color: var(--morado-oscuro);
-    margin-top: 16px; margin-bottom: 6px;
+    margin-top: 14px; margin-bottom: 6px;
   }
+  .order-field-label:first-child { margin-top: 0; }
   .order-input {
     width: 100%; padding: 9px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;
+    background: white;
   }
   .content-list {
     margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.7; color: #333;
   }
-  .order-panel-tab {
-    position: fixed; top: 50%; left: 0; transform: translateY(-50%);
-    background: white; border: none; border-radius: 0 10px 10px 0;
-    padding: 16px 8px; writing-mode: vertical-rl;
-    font-size: 12px; font-weight: bold; color: var(--turquesa); cursor: pointer;
-    box-shadow: 3px 0 8px rgba(0,0,0,0.1); z-index: 601;
-    transition: left 0.3s ease;
-  }
-  .order-panel-wrapper.active .order-panel-tab { left: 280px; }
 </style>
 </head>
 <body>
@@ -295,28 +286,28 @@
       <h2 id="modal-nombre"></h2>
       <div class="price" id="modal-precio"></div>
       <div class="subtab-content active" id="sub-desc"></div>
-    </div>
-  </div>
 
-  <div class="order-panel-wrapper" id="order-panel-wrapper">
-    <div class="order-panel">
-      <div class="order-panel-title" id="order-panel-title">Order details</div>
+      <button class="order-toggle-btn" id="order-toggle-btn" onclick="toggleOrderDetails()">
+        <span id="order-toggle-label">📦 Order details</span>
+        <span class="chevron">▾</span>
+      </button>
 
-      <div class="image-picker-label" id="image-picker-label" style="display:none">Choose your favourite image</div>
-      <div class="image-picker" id="image-picker"></div>
+      <div class="order-details" id="order-details">
+        <div class="image-picker-label" id="image-picker-label" style="display:none">Choose your favourite image</div>
+        <div class="image-picker" id="image-picker"></div>
 
-      <div class="order-field-label" id="label-delivery-date">📅 Delivery date</div>
-      <input type="date" id="delivery-date" class="order-input">
+        <div class="order-field-label" id="label-delivery-date">📅 Delivery date</div>
+        <input type="date" id="delivery-date" class="order-input">
 
-      <div class="order-field-label" id="label-delivery-time">🕒 Delivery time</div>
-      <input type="time" id="delivery-time" class="order-input">
+        <div class="order-field-label" id="label-delivery-time">🕒 Delivery time</div>
+        <input type="time" id="delivery-time" class="order-input">
 
-      <div class="order-field-label" id="label-included">What's included</div>
-      <ol class="content-list" id="content-list"></ol>
+        <div class="order-field-label" id="label-included">What's included</div>
+        <ol class="content-list" id="content-list"></ol>
+      </div>
 
       <button class="whatsapp-btn" id="btn-order-whatsapp" onclick="enviarPedidoWhatsApp()">Order on WhatsApp</button>
     </div>
-    <button class="order-panel-tab" id="order-panel-tab" onclick="togglePanel()">Order details</button>
   </div>
 </div>
 
@@ -496,8 +487,7 @@ function aplicarTraduccionEstatica() {
   document.getElementById('btn-share-photo').textContent = t.sharePhoto;
   document.getElementById('btn-order-whatsapp').textContent = t.orderWhatsapp;
   document.getElementById('back-to-occasions').textContent = t.backToOccasions;
-  document.getElementById('order-panel-title').textContent = t.orderDetails;
-  document.getElementById('order-panel-tab').textContent = t.orderDetails;
+  document.getElementById('order-toggle-label').textContent = `📦 ${t.orderDetails}`;
   document.getElementById('label-delivery-date').textContent = t.deliveryDate;
   document.getElementById('label-delivery-time').textContent = t.deliveryTime;
   document.getElementById('label-included').textContent = t.included;
@@ -678,7 +668,8 @@ function abrirModal(id) {
 
   document.getElementById('delivery-date').value = '';
   document.getElementById('delivery-time').value = '';
-  document.getElementById('order-panel-wrapper').classList.remove('active');
+  document.getElementById('order-details').classList.remove('open');
+  document.getElementById('order-toggle-btn').classList.remove('open');
 
   aplicarTraduccionEstatica();
 
@@ -704,8 +695,9 @@ function renderContentList() {
   });
 }
 
-function togglePanel() {
-  document.getElementById('order-panel-wrapper').classList.toggle('active');
+function toggleOrderDetails() {
+  document.getElementById('order-details').classList.toggle('open');
+  document.getElementById('order-toggle-btn').classList.toggle('open');
 }
 
 function renderCarrusel() {
@@ -809,7 +801,6 @@ async function compartirFotoActual() {
 
 function cerrarModal() {
   document.getElementById('modal').classList.remove('active');
-  document.getElementById('order-panel-wrapper').classList.remove('active');
 }
 
 function enviarPedidoWhatsApp() {
