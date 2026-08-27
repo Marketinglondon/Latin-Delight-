@@ -924,17 +924,22 @@ function enviarPedidoWhatsApp() {
   if (!cestaActual) return;
   const nombre = texto(cestaActual.nombre, cestaActual.nombreEs);
   const numero = NUMEROS[mercado];
+  const simbolo = SIMBOLO_MONEDA[mercado];
 
   const lineas = [];
-  lineas.push(idioma === 'es' ? `¡Hola! Me interesa: ${nombre}` : `Hi! I am interested in: ${nombre}`);
+  lineas.push(idioma === 'es' ? `¡Hola! Me interesa: *${nombre}*` : `Hi! I am interested in: *${nombre}*`);
+
+  lineas.push(idioma === 'es'
+    ? `Precio de venta: *${simbolo}${cestaActual.precioVenta.toFixed(2)}*`
+    : `Selling price: *${simbolo}${cestaActual.precioVenta.toFixed(2)}*`);
 
   if (estilosSeleccionados.length > 0) {
     estilosSeleccionados.forEach(i => {
       const urlImagen = carruselFotos[i];
       lineas.push(idioma === 'es'
-        ? `Imagen elegida: ${i + 1} de ${carruselFotos.length}`
-        : `Chosen image: ${i + 1} of ${carruselFotos.length}`);
-      lineas.push(idioma === 'es' ? `Enlace de la imagen: ${urlImagen}` : `Image link: ${urlImagen}`);
+        ? `Imagen elegida: *${i + 1} de ${carruselFotos.length}*`
+        : `Chosen image: *${i + 1} of ${carruselFotos.length}*`);
+      lineas.push(idioma === 'es' ? `Enlace de la imagen: *${urlImagen}*` : `Image link: *${urlImagen}*`);
     });
   }
 
@@ -942,25 +947,24 @@ function enviarPedidoWhatsApp() {
   const hora = document.getElementById('delivery-time').value;
 
   if (fecha) {
-    lineas.push(idioma === 'es' ? `Fecha de entrega: ${fecha}` : `Delivery date: ${fecha}`);
+    lineas.push(idioma === 'es' ? `Fecha de entrega: *${fecha}*` : `Delivery date: *${fecha}*`);
   }
   if (hora) {
-    lineas.push(idioma === 'es' ? `Hora de entrega: ${hora}` : `Delivery time: ${hora}`);
+    lineas.push(idioma === 'es' ? `Hora de entrega: *${hora}*` : `Delivery time: *${hora}*`);
   }
 
   const zonaNombre = document.getElementById('delivery-zone').value;
   if (zonaNombre) {
     const zona = zonasEnvio.find(z => z.zona === zonaNombre);
     if (zona) {
-      const simbolo = SIMBOLO_MONEDA[mercado];
       const total = cestaActual.precioVenta + zona.costo;
-      lineas.push(idioma === 'es' ? `Zona de entrega: ${zonaNombre}` : `Delivery zone: ${zonaNombre}`);
+      lineas.push(idioma === 'es' ? `Zona de entrega: *${zonaNombre}*` : `Delivery zone: *${zonaNombre}*`);
       lineas.push(idioma === 'es'
-        ? `Costo de domicilio: ${simbolo}${zona.costo.toFixed(2)}`
-        : `Delivery cost: ${simbolo}${zona.costo.toFixed(2)}`);
+        ? `Costo de domicilio: *${simbolo}${zona.costo.toFixed(2)}*`
+        : `Delivery cost: *${simbolo}${zona.costo.toFixed(2)}*`);
       lineas.push(idioma === 'es'
-        ? `Total (producto + domicilio): ${simbolo}${total.toFixed(2)}`
-        : `Total (product + delivery): ${simbolo}${total.toFixed(2)}`);
+        ? `Total (producto + domicilio): *${simbolo}${total.toFixed(2)}*`
+        : `Total (product + delivery): *${simbolo}${total.toFixed(2)}*`);
     }
   }
 
