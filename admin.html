@@ -98,20 +98,33 @@
     display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;
   }
   .photo-thumb {
-    position: relative; width: 72px; height: 72px; border-radius: 8px; overflow: hidden;
+    position: relative; width: 72px; height: 88px; border-radius: 8px; overflow: hidden;
   }
-  .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .photo-thumb img { width: 100%; height: 72px; object-fit: cover; display: block; }
   .photo-thumb .remove-btn {
     position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.6); color: white;
     border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
+  }
+  .photo-thumb .reorder-controls {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 16px;
+    display: flex; background: rgba(255,255,255,0.9);
+  }
+  .photo-thumb .reorder-btn {
+    flex: 1; border: none; background: none; font-size: 10px; cursor: pointer; padding: 0;
+    line-height: 16px;
+  }
+  .photo-thumb .reorder-btn:disabled { opacity: 0.25; cursor: default; }
+  .photo-thumb .cover-badge {
+    position: absolute; top: 2px; left: 2px; background: var(--amarillo); color: #333;
+    font-size: 8px; font-weight: bold; padding: 1px 4px; border-radius: 4px;
   }
   .photo-thumb.uploading {
     display: flex; align-items: center; justify-content: center;
     background: #f0f0f0; font-size: 10px; color: #888; text-align: center;
   }
   .add-photo-btn {
-    width: 72px; height: 72px; border-radius: 8px; border: 2px dashed var(--morado-claro);
+    width: 72px; height: 88px; border-radius: 8px; border: 2px dashed var(--morado-claro);
     background: #faf5fc; color: var(--morado-oscuro); font-size: 26px; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
   }
@@ -248,10 +261,10 @@
     <label>Costo proveedor (privado)</label>
     <input type="number" step="0.01" id="f-costo">
 
-    <label>Fotos (varios estilos = mismo precio, se muestran como carrusel)</label>
+    <label>Fotos (varios estilos = mismo precio, se muestran como carrusel — la primera es la portada de la tarjeta)</label>
     <div class="photo-picker" id="photo-picker"></div>
     <input type="file" id="photo-input" accept="image/*" multiple style="display:none" onchange="subirFotosSeleccionadas(event)">
-    <div class="helper">Toca el botón "+" para tomar una foto o elegir de tu galería. Puedes agregar varias.</div>
+    <div class="helper">Toca "+" para agregar fotos. Usa ⬆️⬇️ para reordenarlas — la primera foto es la que se ve fija en la tarjeta del catálogo.</div>
 
     <div class="actions">
       <button class="btn-cancel" onclick="cerrarFormulario()">Cancelar</button>
@@ -411,12 +424,26 @@ function renderPhotoPicker() {
     <div class="photo-thumb">
       <img src="${url}">
       <button class="remove-btn" onclick="quitarFoto(${i})">×</button>
+      <div class="reorder-controls">
+        <button type="button" class="reorder-btn" onclick="moverFoto(${i}, -1)" ${i === 0 ? 'disabled' : ''}>⬆️</button>
+        <button type="button" class="reorder-btn" onclick="moverFoto(${i}, 1)" ${i === fotosFormulario.length - 1 ? 'disabled' : ''}>⬇️</button>
+      </div>
+      ${i === 0 ? '<span class="cover-badge">Portada</span>' : ''}
     </div>
   `).join('');
 
   cont.innerHTML = thumbs + `
     <button type="button" class="add-photo-btn" onclick="document.getElementById('photo-input').click()">+</button>
   `;
+}
+
+function moverFoto(index, delta) {
+  const nuevoIndex = index + delta;
+  if (nuevoIndex < 0 || nuevoIndex >= fotosFormulario.length) return;
+  const temp = fotosFormulario[index];
+  fotosFormulario[index] = fotosFormulario[nuevoIndex];
+  fotosFormulario[nuevoIndex] = temp;
+  renderPhotoPicker();
 }
 
 function quitarFoto(index) {
