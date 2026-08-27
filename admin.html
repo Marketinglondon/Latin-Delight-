@@ -150,7 +150,36 @@
     <tbody id="tabla-body"></tbody>
   </table>
   <div id="status"></div>
+
+  <div style="margin-top: 30px;">
+    <h2 style="color: var(--morado-oscuro); margin-bottom: 12px; font-size: 16px;">Zonas de envío (Reino Unido)</h2>
+    <div class="toolbar">
+      <button class="btn-primary" onclick="abrirFormularioZona()">+ Nueva zona</button>
+      <button class="btn-secondary" onclick="cargarZonasPredeterminadas()">Cargar zonas predeterminadas</button>
+    </div>
+    <table>
+      <thead>
+        <tr><th>Zona</th><th>Costo</th><th></th></tr>
+      </thead>
+      <tbody id="zonas-tabla-body"></tbody>
+    </table>
+  </div>
 </main>
+
+<div id="zona-form-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:500; padding:16px;">
+  <div style="background:white; border-radius:12px; padding:20px; max-width:340px; width:100%;">
+    <h2 style="color:var(--morado-oscuro); margin-bottom:16px;" id="zona-form-title">Nueva zona</h2>
+    <input type="hidden" id="zf-id">
+    <label>Nombre de la zona</label>
+    <input type="text" id="zf-nombre">
+    <label>Costo (£)</label>
+    <input type="number" step="0.01" id="zf-costo">
+    <div class="actions" style="margin-top:16px;">
+      <button class="btn-cancel" onclick="cerrarFormularioZona()">Cancelar</button>
+      <button class="btn-save" onclick="guardarZona()">Guardar</button>
+    </div>
+  </div>
+</div>
 
 <div id="form-modal">
   <div class="box">
@@ -235,6 +264,7 @@
 const CODIGO_ACCESO = 'latindelight2026';
 const PROJECT_ID = 'latin-delight';
 const FIRESTORE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/cestas`;
+const ZONAS_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/zonasEnvio`;
 
 const firebaseConfig = {
   apiKey: "AIzaSyBsnK8XDEYgISK2GCg3PwNtHbF34eq8pJY",
@@ -251,6 +281,7 @@ const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOU
 
 let mercadoActivo = 'UK';
 let cestasCache = [];
+let zonasCache = [];
 let fotosFormulario = [];
 
 const CATEGORIA_OCASIONES = {
@@ -283,6 +314,7 @@ async function verificarAcceso() {
     await firebase.auth().signInAnonymously();
     document.getElementById('gate').style.display = 'none';
     cargarCestas();
+    cargarZonas();
   } catch (e) {
     alert('Error de autenticación: ' + e.message);
     console.error(e);
@@ -618,6 +650,124 @@ async function traducir(textoEn) {
   } catch (e) {
     return textoEn;
   }
+}
+
+// ---- Gestión de zonas de envío ----
+
+async function cargarZonas() {
+  const res = await fetch(ZONAS_URL);
+  const data = await res.json();
+  zonasCache = (data.documents || []).map(doc => {
+    const f = doc.fields || {};
+    return {
+      id: doc.name.split('/').pop(),
+      zona: f.zona ? f.zona.stringValue : '',
+      costo: f.costo ? parseFloat(f.costo.doubleValue ?? f.costo.integerValue ?? 0) : 0,
+    };
+  }).sort((a, b) => a.costo - b.costo || a.zona.localeCompare(b.zona));
+  renderZonasTabla();
+}
+
+function renderZonasTabla() {
+  const body = document.getElementById('zonas-tabla-body');
+  if (zonasCache.length === 0) {
+    body.innerHTML = '<tr><td colspan="3" style="color:#999;">Sin zonas cargadas todavía.</td></tr>';
+    return;
+  }
+  body.innerHTML = zonasCache.map(z => `
+    <tr>
+      <td>${z.zona}</td>
+      <td>£${z.costo.toFixed(2)}</td>
+      <td>
+        <button onclick="editarZona('${z.id}')">✏️</button>
+        <button onclick="eliminarZona('${z.id}')">🗑️</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function abrirFormularioZona() {
+  document.getElementById('zona-form-title').textContent = 'Nueva zona';
+  document.getElementById('zf-id').value = '';
+  document.getElementById('zf-nombre').value = '';
+  document.getElementById('zf-costo').value = '';
+  document.getElementById('zona-form-modal').style.display = 'flex';
+}
+
+function editarZona(id) {
+  const z = zonasCache.find(x => x.id === id);
+  if (!z) return;
+  document.getElementById('zona-form-title').textContent = 'Editar zona';
+  document.getElementById('zf-id').value = z.id;
+  document.getElementById('zf-nombre').value = z.zona;
+  document.getElementById('zf-costo').value = z.costo;
+  document.getElementById('zona-form-modal').style.display = 'flex';
+}
+
+function cerrarFormularioZona() {
+  document.getElementById('zona-form-modal').style.display = 'none';
+}
+
+async function guardarZona() {
+  const nombre = document.getElementById('zf-nombre').value.trim();
+  const costo = parseFloat(document.getElementById('zf-costo').value) || 0;
+  const id = document.getElementById('zf-id').value;
+
+  if (!nombre) {
+    alert('Escribe el nombre de la zona.');
+    return;
+  }
+
+  const headers = await obtenerHeaders();
+  const fields = { zona: { stringValue: nombre }, costo: { doubleValue: costo } };
+
+  try {
+    if (id) {
+      await fetch(`${ZONAS_URL}/${id}`, { method: 'PATCH', headers, body: JSON.stringify({ fields }) });
+    } else {
+      await fetch(ZONAS_URL, { method: 'POST', headers, body: JSON.stringify({ fields }) });
+    }
+    cerrarFormularioZona();
+    await cargarZonas();
+  } catch (e) {
+    alert('Error guardando zona: ' + e.message);
+  }
+}
+
+async function eliminarZona(id) {
+  if (!confirm('¿Eliminar esta zona?')) return;
+  const headers = await obtenerHeaders();
+  await fetch(`${ZONAS_URL}/${id}`, { method: 'DELETE', headers });
+  await cargarZonas();
+}
+
+async function cargarZonasPredeterminadas() {
+  if (zonasCache.length > 0) {
+    if (!confirm('Ya hay zonas cargadas. ¿Agregar las predeterminadas de todas formas? (puede duplicar zonas existentes)')) return;
+  }
+
+  const predeterminadas = [
+    ['Kingston', 6], ['Merton', 6], ['Sutton', 6],
+    ['City of London', 8.5], ['Croydon', 8.5], ['Hammersmith & Fulham', 8.5], ['Kensington & Chelsea', 8.5], ['Lambeth', 8.5], ['Richmond', 8.5], ['Wandsworth', 8.5],
+    ['Brent', 12], ['Bromley', 12], ['Camden', 12], ['Ealing', 12], ['Hackney', 12], ['Hounslow', 12], ['Islington', 12], ['Lewisham', 12], ['Southwark', 12],
+    ['Barking & Dagenham', 15], ['Barnet', 15], ['Bexley', 15], ['Enfield', 15], ['Greenwich', 15], ['Haringey', 15], ['Harrow', 15], ['Havering', 15], ['Hillingdon', 15], ['Newham', 15], ['Redbridge', 15], ['Tower Hamlets', 15], ['Waltham Forest', 15],
+    ['Surrey', 20], ['Essex', 20], ['Kent', 20],
+  ];
+
+  const headers = await obtenerHeaders();
+  const status = document.getElementById('status');
+  status.textContent = 'Cargando zonas predeterminadas...';
+
+  for (const [zona, costo] of predeterminadas) {
+    await fetch(ZONAS_URL, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ fields: { zona: { stringValue: zona }, costo: { doubleValue: costo } } }),
+    });
+  }
+
+  status.textContent = 'Zonas predeterminadas cargadas.';
+  await cargarZonas();
 }
 </script>
 </body>
