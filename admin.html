@@ -158,6 +158,7 @@
   <div class="toolbar">
     <button class="btn-primary" onclick="abrirFormulario()">+ Nueva cesta</button>
     <button class="btn-secondary" onclick="traducirTodos()">Traducir todos (solo UK)</button>
+    <button class="btn-secondary" onclick="corregirMayusculasNombres()">Corregir mayúsculas de nombres</button>
   </div>
 
   <table>
@@ -210,11 +211,11 @@
     </select>
 
     <label id="label-nombre">Nombre</label>
-    <input type="text" id="f-nombre" onblur="autotraducirCampo('f-nombre','f-nombreEs')">
+    <input type="text" id="f-nombre" onblur="capitalizarNombre(this); autotraducirCampo('f-nombre','f-nombreEs')">
 
     <div id="es-fields">
       <label>Nombre (español) — autocompletado, editable</label>
-      <input type="text" id="f-nombreEs">
+      <input type="text" id="f-nombreEs" onblur="capitalizarNombre(this)">
     </div>
 
     <label>Categoría</label>
@@ -310,6 +311,15 @@ const CATEGORIA_OCASIONES = {
   'Detalles': ['Globos y peluches', 'Orquídeas y globos helio', 'Tabla de quesos'],
   'Adicionales': ['Sin ocasión especial'],
 };
+
+function toTitleCase(str) {
+  if (!str) return str;
+  return str.replace(/\S+/g, palabra => palabra.charAt(0).toUpperCase() + palabra.slice(1).toLowerCase());
+}
+
+function capitalizarNombre(input) {
+  input.value = toTitleCase(input.value.trim());
+}
 
 function actualizarOcasionesDisponibles(ocasionAConservar) {
   const categoria = document.getElementById('f-categoria').value;
@@ -700,6 +710,37 @@ async function traducir(textoEn) {
   } catch (e) {
     return textoEn;
   }
+}
+
+async function corregirMayusculasNombres() {
+  const status = document.getElementById('status');
+  const headers = await obtenerHeaders();
+
+  const pendientes = cestasCache.filter(c => {
+    const nuevoNombre = toTitleCase(c.nombre);
+    const nuevoNombreEs = toTitleCase(c.nombreEs);
+    return nuevoNombre !== c.nombre || nuevoNombreEs !== c.nombreEs;
+  });
+
+  if (pendientes.length === 0) {
+    status.textContent = 'Todos los nombres ya están en el formato correcto.';
+    return;
+  }
+
+  status.textContent = `Corrigiendo ${pendientes.length} nombre(s)...`;
+
+  for (const c of pendientes) {
+    const nuevoNombre = toTitleCase(c.nombre);
+    const nuevoNombreEs = toTitleCase(c.nombreEs);
+    await fetch(`${FIRESTORE_URL}/${c.id}?updateMask.fieldPaths=nombre&updateMask.fieldPaths=nombreEs`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ fields: { nombre: { stringValue: nuevoNombre }, nombreEs: { stringValue: nuevoNombreEs } } }),
+    });
+  }
+
+  status.textContent = 'Nombres corregidos.';
+  await cargarCestas();
 }
 
 // ---- Gestión de zonas de envío ----
