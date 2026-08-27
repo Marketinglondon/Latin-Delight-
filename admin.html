@@ -665,6 +665,21 @@ async function cargarZonas() {
       costo: f.costo ? parseFloat(f.costo.doubleValue ?? f.costo.integerValue ?? 0) : 0,
     };
   }).sort((a, b) => a.costo - b.costo || a.zona.localeCompare(b.zona));
+
+  if (zonasCache.length === 0) {
+    await sembrarZonasPredeterminadas();
+    const res2 = await fetch(ZONAS_URL);
+    const data2 = await res2.json();
+    zonasCache = (data2.documents || []).map(doc => {
+      const f = doc.fields || {};
+      return {
+        id: doc.name.split('/').pop(),
+        zona: f.zona ? f.zona.stringValue : '',
+        costo: f.costo ? parseFloat(f.costo.doubleValue ?? f.costo.integerValue ?? 0) : 0,
+      };
+    }).sort((a, b) => a.costo - b.costo || a.zona.localeCompare(b.zona));
+  }
+
   renderZonasTabla();
 }
 
@@ -745,7 +760,14 @@ async function cargarZonasPredeterminadas() {
   if (zonasCache.length > 0) {
     if (!confirm('Ya hay zonas cargadas. ¿Agregar las predeterminadas de todas formas? (puede duplicar zonas existentes)')) return;
   }
+  const status = document.getElementById('status');
+  status.textContent = 'Cargando zonas predeterminadas...';
+  await sembrarZonasPredeterminadas();
+  status.textContent = 'Zonas predeterminadas cargadas.';
+  await cargarZonas();
+}
 
+async function sembrarZonasPredeterminadas() {
   const predeterminadas = [
     ['Kingston', 6], ['Merton', 6], ['Sutton', 6],
     ['City of London', 8.5], ['Croydon', 8.5], ['Hammersmith & Fulham', 8.5], ['Kensington & Chelsea', 8.5], ['Lambeth', 8.5], ['Richmond', 8.5], ['Wandsworth', 8.5],
@@ -755,9 +777,6 @@ async function cargarZonasPredeterminadas() {
   ];
 
   const headers = await obtenerHeaders();
-  const status = document.getElementById('status');
-  status.textContent = 'Cargando zonas predeterminadas...';
-
   for (const [zona, costo] of predeterminadas) {
     await fetch(ZONAS_URL, {
       method: 'POST',
@@ -765,9 +784,6 @@ async function cargarZonasPredeterminadas() {
       body: JSON.stringify({ fields: { zona: { stringValue: zona }, costo: { doubleValue: costo } } }),
     });
   }
-
-  status.textContent = 'Zonas predeterminadas cargadas.';
-  await cargarZonas();
 }
 </script>
 </body>
