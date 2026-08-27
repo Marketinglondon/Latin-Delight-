@@ -113,7 +113,7 @@
   }
   #modal .close {
     position: absolute; top: 10px; right: 10px; background: white; border-radius: 50%;
-    width: 32px; height: 32px; border: none; font-size: 18px; cursor: pointer; z-index: 10;
+    width: 32px; height: 32px; border: none; font-size: 18px; cursor: pointer; z-index: 60;
   }
   #modal .body { padding: 16px; }
   #modal .body h2 { color: var(--morado-oscuro); margin-bottom: 6px; }
@@ -129,7 +129,8 @@
   }
 
   .carousel {
-    position: relative; width: 100%; height: 280px; overflow: hidden;
+    position: sticky; top: 0; z-index: 40;
+    width: 100%; height: 280px; overflow: hidden;
     background: #f2f2f2; border-radius: 14px 14px 0 0;
     display: flex; align-items: center; justify-content: center;
   }
@@ -284,9 +285,16 @@
     </div>
 
     <div class="body">
-      <h2 id="modal-nombre"></h2>
       <div class="price" id="modal-precio"></div>
-      <div class="subtab-content active" id="sub-desc"></div>
+      <h2 id="modal-nombre"></h2>
+
+      <button class="order-toggle-btn" id="detail-toggle-btn" onclick="toggleDetail()">
+        <span id="detail-toggle-label">📝 Detail</span>
+        <span class="chevron">▾</span>
+      </button>
+      <div class="order-details" id="detail-content">
+        <div class="subtab-content active" id="sub-desc"></div>
+      </div>
 
       <button class="order-toggle-btn" id="order-toggle-btn" onclick="toggleOrderDetails()">
         <span id="order-toggle-label">📦 Order details</span>
@@ -407,6 +415,7 @@ const UI_TEXT = {
     deliveryCostLine: 'Delivery cost',
     totalLine: 'Total',
     included: "What's included",
+    detailLabel: 'Detail',
     splashTagline: "Capture a smile<br>on your love one's face",
     splashButton: 'Discover your breakfast',
   },
@@ -432,6 +441,7 @@ const UI_TEXT = {
     deliveryCostLine: 'Costo de domicilio',
     totalLine: 'Total',
     included: 'Contenido',
+    detailLabel: 'Detalle',
     splashTagline: 'Captura una sonrisa<br>en el rostro de tu ser querido',
     splashButton: 'Descubre tu desayuno',
   },
@@ -509,6 +519,7 @@ function aplicarTraduccionEstatica() {
   document.getElementById('btn-order-whatsapp').textContent = t.orderWhatsapp;
   document.getElementById('back-to-occasions').textContent = t.backToOccasions;
   document.getElementById('order-toggle-label').textContent = `📦 ${t.orderDetails}`;
+  document.getElementById('detail-toggle-label').textContent = `📝 ${t.detailLabel}`;
   document.getElementById('label-delivery-date').textContent = t.deliveryDate;
   document.getElementById('label-delivery-time').textContent = t.deliveryTime;
   document.getElementById('label-zona').textContent = t.deliveryZone;
@@ -681,7 +692,7 @@ let cestaActual = null;
 let carruselFotos = [];
 let carruselIndex = 0;
 let touchStartX = 0;
-let estiloSeleccionado = null;
+let estilosSeleccionados = [];
 let itemsContenido = [];
 
 function abrirModal(id) {
@@ -691,7 +702,7 @@ function abrirModal(id) {
 
   carruselFotos = c.fotos.length ? c.fotos : ['assets/icon/Logo.png'];
   carruselIndex = 0;
-  estiloSeleccionado = null;
+  estilosSeleccionados = [];
   renderCarrusel();
   renderImagePicker();
 
@@ -712,6 +723,8 @@ function abrirModal(id) {
   document.getElementById('delivery-time').value = '';
   document.getElementById('order-details').classList.remove('open');
   document.getElementById('order-toggle-btn').classList.remove('open');
+  document.getElementById('detail-content').classList.remove('open');
+  document.getElementById('detail-toggle-btn').classList.remove('open');
 
   const esUK = mercado === 'UK';
   document.getElementById('label-zona').style.display = esUK ? 'block' : 'none';
@@ -792,6 +805,11 @@ function toggleOrderDetails() {
   document.getElementById('order-toggle-btn').classList.toggle('open');
 }
 
+function toggleDetail() {
+  document.getElementById('detail-content').classList.toggle('open');
+  document.getElementById('detail-toggle-btn').classList.toggle('open');
+}
+
 function renderCarrusel() {
   const track = document.getElementById('carousel-track');
   const dots = document.getElementById('carousel-dots');
@@ -845,12 +863,19 @@ function renderImagePicker() {
   label.textContent = UI_TEXT[idioma].chooseImage;
   label.style.display = 'block';
   cont.innerHTML = carruselFotos.map((_, i) => `
-    <button class="${estiloSeleccionado === i ? 'selected' : ''}" onclick="elegirImagen(${i})">${i + 1}</button>
+    <button class="${estilosSeleccionados.includes(i) ? 'selected' : ''}" onclick="elegirImagen(${i})">${i + 1}</button>
   `).join('');
 }
 
 function elegirImagen(index) {
-  estiloSeleccionado = (estiloSeleccionado === index) ? null : index;
+  const yaEstaba = estilosSeleccionados.includes(index);
+  if (yaEstaba) {
+    estilosSeleccionados = estilosSeleccionados.filter(i => i !== index);
+  } else if (estilosSeleccionados.length < 2) {
+    estilosSeleccionados.push(index);
+  } else {
+    return;
+  }
   carruselIndex = index;
   renderCarrusel();
   renderImagePicker();
@@ -903,12 +928,14 @@ function enviarPedidoWhatsApp() {
   const lineas = [];
   lineas.push(idioma === 'es' ? `¡Hola! Me interesa: ${nombre}` : `Hi! I am interested in: ${nombre}`);
 
-  if (estiloSeleccionado !== null) {
-    const urlImagen = carruselFotos[estiloSeleccionado];
-    lineas.push(idioma === 'es'
-      ? `Imagen elegida: ${estiloSeleccionado + 1} de ${carruselFotos.length}`
-      : `Chosen image: ${estiloSeleccionado + 1} of ${carruselFotos.length}`);
-    lineas.push(idioma === 'es' ? `Enlace de la imagen: ${urlImagen}` : `Image link: ${urlImagen}`);
+  if (estilosSeleccionados.length > 0) {
+    estilosSeleccionados.forEach(i => {
+      const urlImagen = carruselFotos[i];
+      lineas.push(idioma === 'es'
+        ? `Imagen elegida: ${i + 1} de ${carruselFotos.length}`
+        : `Chosen image: ${i + 1} of ${carruselFotos.length}`);
+      lineas.push(idioma === 'es' ? `Enlace de la imagen: ${urlImagen}` : `Image link: ${urlImagen}`);
+    });
   }
 
   const fecha = document.getElementById('delivery-date').value;
