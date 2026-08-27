@@ -138,6 +138,9 @@
   .carousel-track img {
     width: 100%; height: 100%; object-fit: contain; flex-shrink: 0; background: #f2f2f2; cursor: zoom-in;
   }
+  .carousel-track video {
+    width: 100%; height: 100%; object-fit: contain; flex-shrink: 0; background: #000;
+  }
   .carousel-btn {
     position: absolute; top: 50%; transform: translateY(-50%);
     background: rgba(255,255,255,0.85); border: none; border-radius: 50%;
@@ -400,7 +403,7 @@ const UI_TEXT = {
     contactTab: 'Contact',
     aboutText: "Latin Delight Ltd. crafts gift baskets that combine balloons, flowers, decorative packaging and a variety of breakfast, snack, meal and drink options — sometimes with special decorative accessories included.",
     contactText: 'Message us directly on WhatsApp to place an order or ask about custom baskets.',
-    chooseImage: 'Choose your favourite image',
+    chooseImage: 'Choose up to 2 favourite images',
     sharePhoto: '📤 Share this photo',
     orderWhatsapp: 'Order on WhatsApp',
     backToOccasions: '‹ Back to occasions',
@@ -426,7 +429,7 @@ const UI_TEXT = {
     contactTab: 'Contacto',
     aboutText: 'Latin Delight Ltd. crea carritos de compras de regalo que combinan globos, flores, empaques decorativos y una variedad de opciones de desayuno, snacks, comidas y bebidas — algunas con accesorios decorativos especiales incluidos.',
     contactText: 'Escríbenos directamente por WhatsApp para hacer un pedido o preguntar por carritos de compras personalizados.',
-    chooseImage: 'Elige tu imagen favorita',
+    chooseImage: 'Elige hasta 2 imágenes favoritas',
     sharePhoto: '📤 Compartir esta foto',
     orderWhatsapp: 'Pedir por WhatsApp',
     backToOccasions: '‹ Volver a ocasiones',
@@ -567,6 +570,14 @@ function texto(en, es) {
   return en || '';
 }
 
+function esVideo(url) {
+  return /\.(mp4|mov|webm|m4v)(\?.*)?$/i.test(url) || url.includes('/video/upload/');
+}
+
+function miniaturaDeVideo(url) {
+  return url.replace(/\.(mp4|mov|webm|m4v)(\?.*)?$/i, '.jpg');
+}
+
 function parseFirestoreDoc(doc) {
   const f = doc.fields || {};
   const get = (k, type = 'stringValue') => f[k] ? f[k][type] : undefined;
@@ -677,9 +688,12 @@ function renderGrid() {
     return;
   }
 
-  grid.innerHTML = filtradas.map(c => `
+  grid.innerHTML = filtradas.map(c => {
+    const portada = c.fotos[0] || 'assets/icon/Logo.png';
+    const imagenPortada = esVideo(portada) ? miniaturaDeVideo(portada) : portada;
+    return `
     <div class="card" onclick="abrirModal('${c.id}')">
-      <img src="${c.fotos[0] || 'assets/icon/Logo.png'}" alt="${texto(c.nombre, c.nombreEs)}">
+      <img src="${imagenPortada}" alt="${texto(c.nombre, c.nombreEs)}">
       ${c.fotos.length > 1 ? `<span class="styles-badge">${c.fotos.length} styles</span>` : ''}
       <div class="info">
         <h3>${texto(c.nombre, c.nombreEs)}</h3>
@@ -687,7 +701,8 @@ function renderGrid() {
         ${c.ocasion ? `<span class="badge">${labelOcasion(c.ocasion)}</span>` : ''}
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 let cestaActual = null;
@@ -818,7 +833,9 @@ function renderCarrusel() {
   const controles = document.querySelectorAll('.carousel-btn');
 
   track.innerHTML = carruselFotos.map((url, i) =>
-    `<img src="${url}" alt="" onclick="abrirLightbox(${i})">`
+    esVideo(url)
+      ? `<video src="${url}" controls playsinline preload="metadata"></video>`
+      : `<img src="${url}" alt="" onclick="abrirLightbox(${i})">`
   ).join('');
   track.style.transform = `translateX(-${carruselIndex * 100}%)`;
 
