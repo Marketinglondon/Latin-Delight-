@@ -399,7 +399,7 @@ const UI_TEXT = {
     contactTab: 'Contact',
     aboutText: "Latin Delight Ltd. crafts gift baskets that combine balloons, flowers, decorative packaging and a variety of breakfast, snack, meal and drink options — sometimes with special decorative accessories included.",
     contactText: 'Message us directly on WhatsApp to place an order or ask about custom baskets.',
-    chooseImage: 'Choose up to 2 favourite images',
+    chooseImage: 'Choose your favourite image',
     sharePhoto: '📤 Share this photo',
     orderWhatsapp: 'Order on WhatsApp',
     backToOccasions: '‹ Back to occasions',
@@ -425,7 +425,7 @@ const UI_TEXT = {
     contactTab: 'Contacto',
     aboutText: 'Latin Delight Ltd. crea carritos de compras de regalo que combinan globos, flores, empaques decorativos y una variedad de opciones de desayuno, snacks, comidas y bebidas — algunas con accesorios decorativos especiales incluidos.',
     contactText: 'Escríbenos directamente por WhatsApp para hacer un pedido o preguntar por carritos de compras personalizados.',
-    chooseImage: 'Elige hasta 2 imágenes favoritas',
+    chooseImage: 'Elige tu imagen favorita',
     sharePhoto: '📤 Compartir esta foto',
     orderWhatsapp: 'Pedir por WhatsApp',
     backToOccasions: '‹ Volver a ocasiones',
@@ -568,6 +568,15 @@ function texto(en, es) {
 
 function esVideo(url) {
   return /\.(mp4|mov|webm|m4v)(\?.*)?$/i.test(url) || url.includes('/video/upload/');
+}
+
+function fechaMinimaEntrega() {
+  const d = new Date();
+  d.setDate(d.getDate() + 2);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 function miniaturaDeVideo(url) {
@@ -732,6 +741,7 @@ function abrirModal(id) {
   renderContentList();
 
   document.getElementById('delivery-date').value = '';
+  document.getElementById('delivery-date').min = fechaMinimaEntrega();
   renderTimeSlots();
   document.getElementById('delivery-time').value = '';
   document.getElementById('order-details').classList.remove('open');
@@ -884,11 +894,9 @@ function renderImagePicker() {
 function elegirImagen(index) {
   const yaEstaba = estilosSeleccionados.includes(index);
   if (yaEstaba) {
-    estilosSeleccionados = estilosSeleccionados.filter(i => i !== index);
-  } else if (estilosSeleccionados.length < 2) {
-    estilosSeleccionados.push(index);
+    estilosSeleccionados = [];
   } else {
-    return;
+    estilosSeleccionados = [index];
   }
   carruselIndex = index;
   renderCarrusel();
