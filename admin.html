@@ -159,6 +159,7 @@
     <button class="btn-primary" onclick="abrirFormulario()">+ Nuevo producto</button>
     <button class="btn-secondary" onclick="traducirTodos()">Traducir todos (solo UK)</button>
     <button class="btn-secondary" onclick="corregirMayusculasNombres()">Corregir mayúsculas de nombres</button>
+    <button class="btn-secondary" onclick="corregirOcasionesDesayuno()">Corregir ocasiones de Desayuno sorpresa</button>
   </div>
 
   <table>
@@ -305,7 +306,7 @@ let zonasCache = [];
 let fotosFormulario = [];
 
 const CATEGORIA_OCASIONES = {
-  'Desayuno sorpresa': ['Cumpleaños', 'Aniversarios', 'Baby Shower', 'Apoyo emocional', 'Fecha de calendario'],
+  'Desayuno sorpresa': ['Cumpleaños, aniversario y otros'],
   'Frutas expresiva': ['Bandeja de frutas', 'Frutas y rosas', 'Fresas con chocolate', 'Fresas con rosas', 'Fresas con tortas'],
   'Rosas': ['Caja de rosas', 'Buquet de rosas', 'Rosas con chocolate ferrero', 'Rosas con peluche'],
   'Detalles': ['Globos y peluches', 'Orquídeas y globos helio', 'Tabla de quesos'],
@@ -740,6 +741,34 @@ async function corregirMayusculasNombres() {
   }
 
   status.textContent = 'Nombres corregidos.';
+  await cargarCestas();
+}
+
+async function corregirOcasionesDesayuno() {
+  const status = document.getElementById('status');
+  const headers = await obtenerHeaders();
+  const nuevaOcasion = 'Cumpleaños, aniversario y otros';
+
+  const pendientes = cestasCache.filter(c =>
+    c.categoria === 'Desayuno sorpresa' && c.ocasion !== nuevaOcasion
+  );
+
+  if (pendientes.length === 0) {
+    status.textContent = 'No hay productos de Desayuno sorpresa por corregir.';
+    return;
+  }
+
+  status.textContent = `Corrigiendo ocasión en ${pendientes.length} producto(s)...`;
+
+  for (const c of pendientes) {
+    await fetch(`${FIRESTORE_URL}/${c.id}?updateMask.fieldPaths=ocasion`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({ fields: { ocasion: { stringValue: nuevaOcasion } } }),
+    });
+  }
+
+  status.textContent = 'Ocasiones de Desayuno sorpresa corregidas.';
   await cargarCestas();
 }
 
