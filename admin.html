@@ -156,7 +156,7 @@
 
 <main>
   <div class="toolbar">
-    <button class="btn-primary" onclick="abrirFormulario()">+ Nueva cesta</button>
+    <button class="btn-primary" onclick="abrirFormulario()">+ Nuevo producto</button>
     <button class="btn-secondary" onclick="traducirTodos()">Traducir todos (solo UK)</button>
     <button class="btn-secondary" onclick="corregirMayusculasNombres()">Corregir mayúsculas de nombres</button>
   </div>
@@ -201,7 +201,7 @@
 
 <div id="form-modal">
   <div class="box">
-    <h2 id="form-title">Nueva cesta</h2>
+    <h2 id="form-title">Nuevo producto</h2>
     <input type="hidden" id="f-id">
 
     <label>Mercado</label>
@@ -534,7 +534,7 @@ function alCambiarPaisForm() {
 }
 
 function abrirFormulario() {
-  document.getElementById('form-title').textContent = 'Nueva cesta';
+  document.getElementById('form-title').textContent = 'Nuevo producto';
   document.getElementById('f-id').value = '';
   ['f-nombre','f-nombreEs','f-descripcion','f-descripcionEs','f-contenido','f-contenidoEs'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('f-precio').value = '';
@@ -553,7 +553,7 @@ function abrirFormulario() {
 function editarCesta(id) {
   const c = cestasCache.find(x => x.id === id);
   if (!c) return;
-  document.getElementById('form-title').textContent = 'Editar cesta';
+  document.getElementById('form-title').textContent = 'Editar producto';
   document.getElementById('f-id').value = c.id;
   document.getElementById('f-pais').value = c.pais;
   document.getElementById('f-nombre').value = c.nombre;
@@ -650,7 +650,7 @@ async function guardarCesta() {
 }
 
 async function eliminarCesta(id) {
-  if (!confirm('¿Eliminar esta cesta?')) return;
+  if (!confirm('¿Eliminar este producto?')) return;
   const headers = await obtenerHeaders();
   await fetch(`${FIRESTORE_URL}/${id}`, { method: 'DELETE', headers });
   await cargarCestas();
@@ -665,11 +665,11 @@ async function traducirTodos() {
   );
 
   if (pendientes.length === 0) {
-    status.textContent = 'No hay cestas de UK pendientes por traducir.';
+    status.textContent = 'No hay productos de UK pendientes por traducir.';
     return;
   }
 
-  status.textContent = `Traduciendo ${pendientes.length} cesta(s)...`;
+  status.textContent = `Traduciendo ${pendientes.length} producto(s)...`;
 
   for (const c of pendientes) {
     const camposActualizar = {};
