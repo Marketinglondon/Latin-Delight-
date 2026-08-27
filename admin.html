@@ -129,7 +129,7 @@
   }
   .add-photo-btn {
     width: 72px; height: 88px; border-radius: 8px; border: 2px dashed var(--morado-claro);
-    background: #faf5fc; color: var(--morado-oscuro); font-size: 26px; cursor: pointer;
+    background: #faf5fc; color: var(--morado-oscuro); font-size: 15px; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
   }
 </style>
@@ -267,8 +267,9 @@
 
     <label>Fotos y videos (varios estilos = mismo precio, se muestran como carrusel — el primero es la portada de la tarjeta)</label>
     <div class="photo-picker" id="photo-picker"></div>
-    <input type="file" id="photo-input" accept="image/*,video/*" multiple style="display:none" onchange="subirFotosSeleccionadas(event)">
-    <div class="helper">Toca "+" para agregar fotos o videos. Usa ⬆️⬇️ para reordenarlos — el primero se ve fijo en la tarjeta del catálogo.</div>
+    <input type="file" id="photo-input" accept="image/*" multiple style="display:none" onchange="subirFotosSeleccionadas(event)">
+    <input type="file" id="video-input" accept="video/*" multiple style="display:none" onchange="subirFotosSeleccionadas(event)">
+    <div class="helper">📷+ agrega fotos desde tu galería. 🎥+ agrega videos desde tu galería. Usa ⬆️⬇️ para reordenarlos — el primero se ve fijo en la tarjeta del catálogo.</div>
 
     <div class="actions">
       <button class="btn-cancel" onclick="cerrarFormulario()">Cancelar</button>
@@ -452,7 +453,8 @@ function renderPhotoPicker() {
   `).join('');
 
   cont.innerHTML = thumbs + `
-    <button type="button" class="add-photo-btn" onclick="document.getElementById('photo-input').click()">+</button>
+    <button type="button" class="add-photo-btn" onclick="document.getElementById('photo-input').click()">📷+</button>
+    <button type="button" class="add-photo-btn" onclick="document.getElementById('video-input').click()">🎥+</button>
   `;
 }
 
