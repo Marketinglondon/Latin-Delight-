@@ -197,6 +197,13 @@
       <textarea id="f-descripcionEs"></textarea>
     </div>
 
+    <label id="label-contenido">Contenido (una línea por ítem, se muestra numerada)</label>
+    <textarea id="f-contenido" onblur="autotraducirCampo('f-contenido','f-contenidoEs')"></textarea>
+    <div id="es-fields-contenido" class="es-only" style="display:none">
+      <label>Contenido (español) — autocompletado, editable</label>
+      <textarea id="f-contenidoEs"></textarea>
+    </div>
+
     <div class="checkboxes">
       <label><input type="checkbox" id="f-globos"> Globos</label>
       <label><input type="checkbox" id="f-flores"> Flores</label>
@@ -308,6 +315,7 @@ function parseDoc(doc) {
     nombre: get('nombre'), nombreEs: get('nombreEs'),
     categoria: get('categoria'), ocasion: get('ocasion'), presentacion: get('presentacion'),
     descripcion: get('descripcion'), descripcionEs: get('descripcionEs'),
+    contenido: get('contenido'), contenidoEs: get('contenidoEs'),
     incluyeGlobos: getBool('incluyeGlobos'), incluyeFlores: getBool('incluyeFlores'),
     incluyeAccesorio: getBool('incluyeAccesorio'), incluyeComida: getBool('incluyeComida'),
     incluyeBebida: getBool('incluyeBebida'),
@@ -327,6 +335,7 @@ function toFirestoreFields(c) {
     nombre: str(c.nombre), nombreEs: str(c.nombreEs),
     categoria: str(c.categoria), ocasion: str(c.ocasion), presentacion: str(c.presentacion),
     descripcion: str(c.descripcion), descripcionEs: str(c.descripcionEs),
+    contenido: str(c.contenido), contenidoEs: str(c.contenidoEs),
     incluyeGlobos: bool(c.incluyeGlobos), incluyeFlores: bool(c.incluyeFlores),
     incluyeAccesorio: bool(c.incluyeAccesorio), incluyeComida: bool(c.incluyeComida),
     incluyeBebida: bool(c.incluyeBebida),
@@ -427,12 +436,15 @@ function alCambiarPaisForm() {
   document.getElementById('label-precio').textContent = `Precio de venta (${simbolo})`;
   document.getElementById('label-nombre').textContent = esUK ? 'Nombre (inglés)' : 'Nombre';
   document.getElementById('label-descripcion').textContent = esUK ? 'Descripción (inglés)' : 'Descripción';
+  document.getElementById('label-contenido').textContent = esUK
+    ? "Contenido / What's included (inglés) — una línea por ítem"
+    : 'Contenido — una línea por ítem';
 }
 
 function abrirFormulario() {
   document.getElementById('form-title').textContent = 'Nueva cesta';
   document.getElementById('f-id').value = '';
-  ['f-nombre','f-nombreEs','f-descripcion','f-descripcionEs'].forEach(id => document.getElementById(id).value = '');
+  ['f-nombre','f-nombreEs','f-descripcion','f-descripcionEs','f-contenido','f-contenidoEs'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('f-precio').value = '';
   document.getElementById('f-costo').value = '';
   document.getElementById('f-pais').value = mercadoActivo;
@@ -459,6 +471,8 @@ function editarCesta(id) {
   document.getElementById('f-presentacion').value = c.presentacion;
   document.getElementById('f-descripcion').value = c.descripcion;
   document.getElementById('f-descripcionEs').value = c.descripcionEs;
+  document.getElementById('f-contenido').value = c.contenido;
+  document.getElementById('f-contenidoEs').value = c.contenidoEs;
   document.getElementById('f-globos').checked = c.incluyeGlobos;
   document.getElementById('f-flores').checked = c.incluyeFlores;
   document.getElementById('f-accesorio').checked = c.incluyeAccesorio;
@@ -505,6 +519,8 @@ async function guardarCesta() {
     presentacion: document.getElementById('f-presentacion').value,
     descripcion: document.getElementById('f-descripcion').value.trim(),
     descripcionEs: esUK ? document.getElementById('f-descripcionEs').value.trim() : document.getElementById('f-descripcion').value.trim(),
+    contenido: document.getElementById('f-contenido').value.trim(),
+    contenidoEs: esUK ? document.getElementById('f-contenidoEs').value.trim() : document.getElementById('f-contenido').value.trim(),
     incluyeGlobos: document.getElementById('f-globos').checked,
     incluyeFlores: document.getElementById('f-flores').checked,
     incluyeAccesorio: document.getElementById('f-accesorio').checked,
@@ -553,7 +569,7 @@ async function traducirTodos() {
   const headers = await obtenerHeaders();
   const pendientes = cestasCache.filter(c =>
     c.pais === 'UK' &&
-    ((c.nombre && !c.nombreEs) || (c.descripcion && !c.descripcionEs))
+    ((c.nombre && !c.nombreEs) || (c.descripcion && !c.descripcionEs) || (c.contenido && !c.contenidoEs))
   );
 
   if (pendientes.length === 0) {
@@ -574,6 +590,10 @@ async function traducirTodos() {
     if (c.descripcion && !c.descripcionEs) {
       camposActualizar.descripcionEs = { stringValue: await traducir(c.descripcion) };
       maskPaths.push('descripcionEs');
+    }
+    if (c.contenido && !c.contenidoEs) {
+      camposActualizar.contenidoEs = { stringValue: await traducir(c.contenido) };
+      maskPaths.push('contenidoEs');
     }
     if (maskPaths.length) {
       const maskQuery = maskPaths.map(p => `updateMask.fieldPaths=${p}`).join('&');
