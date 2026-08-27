@@ -101,6 +101,10 @@
     position: relative; width: 72px; height: 88px; border-radius: 8px; overflow: hidden;
   }
   .photo-thumb img { width: 100%; height: 72px; object-fit: cover; display: block; }
+  .photo-thumb video { width: 100%; height: 72px; object-fit: cover; display: block; background: #000; }
+  .photo-thumb .video-badge {
+    position: absolute; bottom: 18px; right: 2px; font-size: 12px;
+  }
   .photo-thumb .remove-btn {
     position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.6); color: white;
     border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 12px; cursor: pointer;
@@ -261,10 +265,10 @@
     <label>Costo proveedor (privado)</label>
     <input type="number" step="0.01" id="f-costo">
 
-    <label>Fotos (varios estilos = mismo precio, se muestran como carrusel — la primera es la portada de la tarjeta)</label>
+    <label>Fotos y videos (varios estilos = mismo precio, se muestran como carrusel — el primero es la portada de la tarjeta)</label>
     <div class="photo-picker" id="photo-picker"></div>
-    <input type="file" id="photo-input" accept="image/*" multiple style="display:none" onchange="subirFotosSeleccionadas(event)">
-    <div class="helper">Toca "+" para agregar fotos. Usa ⬆️⬇️ para reordenarlas — la primera foto es la que se ve fija en la tarjeta del catálogo.</div>
+    <input type="file" id="photo-input" accept="image/*,video/*" multiple style="display:none" onchange="subirFotosSeleccionadas(event)">
+    <div class="helper">Toca "+" para agregar fotos o videos. Usa ⬆️⬇️ para reordenarlos — el primero se ve fijo en la tarjeta del catálogo.</div>
 
     <div class="actions">
       <button class="btn-cancel" onclick="cerrarFormulario()">Cancelar</button>
@@ -291,6 +295,7 @@ const MY_MEMORY_ENDPOINT = 'https://api.mymemory.translated.net/get';
 const CLOUDINARY_CLOUD_NAME = 'iggcl810';
 const CLOUDINARY_UPLOAD_PRESET = 'latin_delight_unsigned';
 const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
+const CLOUDINARY_UPLOAD_URL_VIDEO = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`;
 
 let mercadoActivo = 'UK';
 let cestasCache = [];
@@ -398,14 +403,25 @@ async function cargarCestas() {
   renderTabla();
 }
 
+function esVideo(url) {
+  return /\.(mp4|mov|webm|m4v)(\?.*)?$/i.test(url) || url.includes('/video/upload/');
+}
+
+function miniaturaDeVideo(url) {
+  return url.replace(/\.(mp4|mov|webm|m4v)(\?.*)?$/i, '.jpg');
+}
+
 function renderTabla() {
   const body = document.getElementById('tabla-body');
   const filtradas = cestasCache.filter(c => c.pais === mercadoActivo);
   const simbolo = mercadoActivo === 'CO' ? '$' : '£';
 
-  body.innerHTML = filtradas.map(c => `
+  body.innerHTML = filtradas.map(c => {
+    const portada = c.fotos[0];
+    const imgPortada = portada ? (esVideo(portada) ? miniaturaDeVideo(portada) : portada) : null;
+    return `
     <tr>
-      <td>${c.fotos[0] ? `<img src="${c.fotos[0]}">` : '—'}</td>
+      <td>${imgPortada ? `<img src="${imgPortada}">` : '—'}</td>
       <td>${c.nombre}</td>
       <td>${c.categoria}</td>
       <td>${simbolo}${c.precioVenta.toFixed(2)}</td>
@@ -415,14 +431,17 @@ function renderTabla() {
         <button onclick="eliminarCesta('${c.id}')">🗑️</button>
       </td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function renderPhotoPicker() {
   const cont = document.getElementById('photo-picker');
   const thumbs = fotosFormulario.map((url, i) => `
     <div class="photo-thumb">
-      <img src="${url}">
+      ${esVideo(url)
+        ? `<video src="${url}" muted></video><span class="video-badge">🎥</span>`
+        : `<img src="${url}">`}
       <button class="remove-btn" onclick="quitarFoto(${i})">×</button>
       <div class="reorder-controls">
         <button type="button" class="reorder-btn" onclick="moverFoto(${i}, -1)" ${i === 0 ? 'disabled' : ''}>⬆️</button>
@@ -459,8 +478,9 @@ async function subirFotosSeleccionadas(event) {
 
   for (const archivo of archivos) {
     const placeholderId = 'ph-' + Date.now() + Math.random().toString(36).slice(2);
+    const esVid = archivo.type.startsWith('video/');
     cont.insertAdjacentHTML('beforeend', `
-      <div class="photo-thumb uploading" id="${placeholderId}">Subiendo...</div>
+      <div class="photo-thumb uploading" id="${placeholderId}">${esVid ? 'Subiendo video...' : 'Subiendo...'}</div>
     `);
 
     try {
@@ -468,16 +488,17 @@ async function subirFotosSeleccionadas(event) {
       formData.append('file', archivo);
       formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
 
-      const res = await fetch(CLOUDINARY_UPLOAD_URL, { method: 'POST', body: formData });
+      const endpoint = esVid ? CLOUDINARY_UPLOAD_URL_VIDEO : CLOUDINARY_UPLOAD_URL;
+      const res = await fetch(endpoint, { method: 'POST', body: formData });
       const data = await res.json();
 
       if (data.secure_url) {
         fotosFormulario.push(data.secure_url);
       } else {
-        alert('No se pudo subir una foto: ' + (data.error?.message || 'error desconocido'));
+        alert('No se pudo subir el archivo: ' + (data.error?.message || 'error desconocido'));
       }
     } catch (e) {
-      alert('Error subiendo foto: ' + e.message);
+      alert('Error subiendo archivo: ' + e.message);
     }
 
     document.getElementById(placeholderId)?.remove();
