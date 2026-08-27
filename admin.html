@@ -115,15 +115,6 @@
     background: #faf5fc; color: var(--morado-oscuro); font-size: 26px; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
   }
-
-  .field-label-row {
-    display: flex; justify-content: space-between; align-items: center; margin-top: 12px;
-  }
-  .field-label-row label { margin-top: 0; }
-  .btn-clear-field {
-    background: #fdecea; color: #c0392b; border: 1px solid #f5c6c0; border-radius: 6px;
-    padding: 4px 10px; font-size: 11px; font-weight: bold; cursor: pointer;
-  }
 </style>
 </head>
 <body>
@@ -206,20 +197,6 @@
       <textarea id="f-descripcionEs"></textarea>
     </div>
 
-    <div class="field-label-row">
-      <label id="label-contenido" style="margin-top:0">Contenido (una línea por ítem)</label>
-      <button type="button" class="btn-clear-field" onclick="limpiarCampo('f-contenido')">🗑️ Limpiar</button>
-    </div>
-    <textarea id="f-contenido" onblur="autotraducirCampo('f-contenido','f-contenidoEs')"></textarea>
-    <div id="es-fields-contenido" class="es-only" style="display:none">
-      <div class="field-label-row">
-        <label style="margin-top:0">Contenido (español) — autocompletado, editable</label>
-        <button type="button" class="btn-clear-field" onclick="limpiarCampo('f-contenidoEs')">🗑️ Limpiar</button>
-      </div>
-      <textarea id="f-contenidoEs"></textarea>
-    </div>
-    <div class="helper">Si el texto se ve raro (espacios extraños, huecos), toca "Limpiar" y vuelve a escribirlo directo aquí en vez de copiar/pegar desde otra app.</div>
-
     <div class="checkboxes">
       <label><input type="checkbox" id="f-globos"> Globos</label>
       <label><input type="checkbox" id="f-flores"> Flores</label>
@@ -289,12 +266,6 @@ function actualizarOcasionesDisponibles(ocasionAConservar) {
   }
 }
 
-function limpiarCampo(idCampo) {
-  if (!confirm('¿Borrar todo el texto de este campo?')) return;
-  document.getElementById(idCampo).value = '';
-  document.getElementById(idCampo).focus();
-}
-
 async function verificarAcceso() {
   const val = document.getElementById('access-code').value;
   if (val !== CODIGO_ACCESO) {
@@ -337,7 +308,6 @@ function parseDoc(doc) {
     nombre: get('nombre'), nombreEs: get('nombreEs'),
     categoria: get('categoria'), ocasion: get('ocasion'), presentacion: get('presentacion'),
     descripcion: get('descripcion'), descripcionEs: get('descripcionEs'),
-    contenido: get('contenido'), contenidoEs: get('contenidoEs'),
     incluyeGlobos: getBool('incluyeGlobos'), incluyeFlores: getBool('incluyeFlores'),
     incluyeAccesorio: getBool('incluyeAccesorio'), incluyeComida: getBool('incluyeComida'),
     incluyeBebida: getBool('incluyeBebida'),
@@ -357,7 +327,6 @@ function toFirestoreFields(c) {
     nombre: str(c.nombre), nombreEs: str(c.nombreEs),
     categoria: str(c.categoria), ocasion: str(c.ocasion), presentacion: str(c.presentacion),
     descripcion: str(c.descripcion), descripcionEs: str(c.descripcionEs),
-    contenido: str(c.contenido), contenidoEs: str(c.contenidoEs),
     incluyeGlobos: bool(c.incluyeGlobos), incluyeFlores: bool(c.incluyeFlores),
     incluyeAccesorio: bool(c.incluyeAccesorio), incluyeComida: bool(c.incluyeComida),
     incluyeBebida: bool(c.incluyeBebida),
@@ -458,15 +427,12 @@ function alCambiarPaisForm() {
   document.getElementById('label-precio').textContent = `Precio de venta (${simbolo})`;
   document.getElementById('label-nombre').textContent = esUK ? 'Nombre (inglés)' : 'Nombre';
   document.getElementById('label-descripcion').textContent = esUK ? 'Descripción (inglés)' : 'Descripción';
-  document.getElementById('label-contenido').textContent = esUK
-    ? "Contenido / What's included (inglés) — una línea por ítem"
-    : 'Contenido — una línea por ítem';
 }
 
 function abrirFormulario() {
   document.getElementById('form-title').textContent = 'Nueva cesta';
   document.getElementById('f-id').value = '';
-  ['f-nombre','f-nombreEs','f-descripcion','f-descripcionEs','f-contenido','f-contenidoEs'].forEach(id => document.getElementById(id).value = '');
+  ['f-nombre','f-nombreEs','f-descripcion','f-descripcionEs'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('f-precio').value = '';
   document.getElementById('f-costo').value = '';
   document.getElementById('f-pais').value = mercadoActivo;
@@ -493,8 +459,6 @@ function editarCesta(id) {
   document.getElementById('f-presentacion').value = c.presentacion;
   document.getElementById('f-descripcion').value = c.descripcion;
   document.getElementById('f-descripcionEs').value = c.descripcionEs;
-  document.getElementById('f-contenido').value = c.contenido;
-  document.getElementById('f-contenidoEs').value = c.contenidoEs;
   document.getElementById('f-globos').checked = c.incluyeGlobos;
   document.getElementById('f-flores').checked = c.incluyeFlores;
   document.getElementById('f-accesorio').checked = c.incluyeAccesorio;
@@ -541,8 +505,6 @@ async function guardarCesta() {
     presentacion: document.getElementById('f-presentacion').value,
     descripcion: document.getElementById('f-descripcion').value.trim(),
     descripcionEs: esUK ? document.getElementById('f-descripcionEs').value.trim() : document.getElementById('f-descripcion').value.trim(),
-    contenido: document.getElementById('f-contenido').value.trim(),
-    contenidoEs: esUK ? document.getElementById('f-contenidoEs').value.trim() : document.getElementById('f-contenido').value.trim(),
     incluyeGlobos: document.getElementById('f-globos').checked,
     incluyeFlores: document.getElementById('f-flores').checked,
     incluyeAccesorio: document.getElementById('f-accesorio').checked,
@@ -591,7 +553,7 @@ async function traducirTodos() {
   const headers = await obtenerHeaders();
   const pendientes = cestasCache.filter(c =>
     c.pais === 'UK' &&
-    ((c.nombre && !c.nombreEs) || (c.descripcion && !c.descripcionEs) || (c.contenido && !c.contenidoEs))
+    ((c.nombre && !c.nombreEs) || (c.descripcion && !c.descripcionEs))
   );
 
   if (pendientes.length === 0) {
@@ -613,11 +575,6 @@ async function traducirTodos() {
       camposActualizar.descripcionEs = { stringValue: await traducir(c.descripcion) };
       maskPaths.push('descripcionEs');
     }
-    if (c.contenido && !c.contenidoEs) {
-      camposActualizar.contenidoEs = { stringValue: await traducir(c.contenido) };
-      maskPaths.push('contenidoEs');
-    }
-
     if (maskPaths.length) {
       const maskQuery = maskPaths.map(p => `updateMask.fieldPaths=${p}`).join('&');
       await fetch(`${FIRESTORE_URL}/${c.id}?${maskQuery}`, {
