@@ -412,8 +412,10 @@ async function cargarCestas() {
   let documentos = [];
   let pageToken = null;
   do {
-    const url = pageToken ? `${FIRESTORE_URL}?pageToken=${encodeURIComponent(pageToken)}` : FIRESTORE_URL;
-    const res = await fetch(url);
+    const params = new URLSearchParams({ pageSize: '300' });
+    if (pageToken) params.set('pageToken', pageToken);
+    const url = `${FIRESTORE_URL}?${params.toString()}`;
+    const res = await fetch(url, { cache: 'no-store' });
     const data = await res.json();
     documentos = documentos.concat(data.documents || []);
     pageToken = data.nextPageToken || null;
@@ -782,7 +784,7 @@ async function corregirOcasionesDesayuno() {
 // ---- Gestión de zonas de envío ----
 
 async function cargarZonas() {
-  const res = await fetch(ZONAS_URL);
+  const res = await fetch(ZONAS_URL, { cache: 'no-store' });
   const data = await res.json();
   zonasCache = (data.documents || []).map(doc => {
     const f = doc.fields || {};
@@ -795,7 +797,7 @@ async function cargarZonas() {
 
   if (zonasCache.length === 0) {
     await sembrarZonasPredeterminadas();
-    const res2 = await fetch(ZONAS_URL);
+    const res2 = await fetch(ZONAS_URL, { cache: 'no-store' });
     const data2 = await res2.json();
     zonasCache = (data2.documents || []).map(doc => {
       const f = doc.fields || {};
