@@ -409,9 +409,16 @@ function toFirestoreFields(c) {
 }
 
 async function cargarCestas() {
-  const res = await fetch(FIRESTORE_URL);
-  const data = await res.json();
-  cestasCache = (data.documents || []).map(parseDoc);
+  let documentos = [];
+  let pageToken = null;
+  do {
+    const url = pageToken ? `${FIRESTORE_URL}?pageToken=${encodeURIComponent(pageToken)}` : FIRESTORE_URL;
+    const res = await fetch(url);
+    const data = await res.json();
+    documentos = documentos.concat(data.documents || []);
+    pageToken = data.nextPageToken || null;
+  } while (pageToken);
+  cestasCache = documentos.map(parseDoc);
   renderTabla();
 }
 
