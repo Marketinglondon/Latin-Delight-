@@ -420,7 +420,12 @@ async function cargarCestas() {
     documentos = documentos.concat(data.documents || []);
     pageToken = data.nextPageToken || null;
   } while (pageToken);
-  cestasCache = documentos.map(parseDoc);
+
+  const porId = new Map();
+  documentos.forEach(doc => porId.set(doc.name, doc));
+  const sinDuplicados = Array.from(porId.values());
+
+  cestasCache = sinDuplicados.map(parseDoc);
   renderTabla();
 }
 
