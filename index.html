@@ -621,7 +621,12 @@ async function cargarCestas() {
       documentos = documentos.concat(data.documents || []);
       pageToken = data.nextPageToken || null;
     } while (pageToken);
-    const todas = documentos.map(parseFirestoreDoc);
+
+    const porId = new Map();
+    documentos.forEach(doc => porId.set(doc.name, doc));
+    const sinDuplicados = Array.from(porId.values());
+
+    const todas = sinDuplicados.map(parseFirestoreDoc);
     cestas = todas.filter(c => c.pais === mercado && c.enStock);
   } catch (e) {
     cestas = [];
