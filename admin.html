@@ -170,7 +170,7 @@
   </table>
   <div id="status"></div>
 
-  <div style="margin-top: 30px;">
+  <div id="zonas-seccion" style="margin-top: 30px;">
     <h2 style="color: var(--morado-oscuro); margin-bottom: 12px; font-size: 16px;">Zonas de envío (Reino Unido)</h2>
     <div class="toolbar">
       <button class="btn-primary" onclick="abrirFormularioZona()">+ Nueva zona</button>
@@ -362,6 +362,7 @@ function cambiarMercado(m) {
   mercadoActivo = m;
   document.getElementById('btn-uk').classList.toggle('active', m === 'UK');
   document.getElementById('btn-co').classList.toggle('active', m === 'CO');
+  document.getElementById('zonas-seccion').style.display = m === 'UK' ? 'block' : 'none';
   renderTabla();
 }
 
