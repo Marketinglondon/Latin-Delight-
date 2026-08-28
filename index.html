@@ -613,8 +613,10 @@ async function cargarCestas() {
     let documentos = [];
     let pageToken = null;
     do {
-      const url = pageToken ? `${FIRESTORE_URL}?pageToken=${encodeURIComponent(pageToken)}` : FIRESTORE_URL;
-      const res = await fetch(url);
+      const params = new URLSearchParams({ pageSize: '300' });
+      if (pageToken) params.set('pageToken', pageToken);
+      const url = `${FIRESTORE_URL}?${params.toString()}`;
+      const res = await fetch(url, { cache: 'no-store' });
       const data = await res.json();
       documentos = documentos.concat(data.documents || []);
       pageToken = data.nextPageToken || null;
@@ -628,7 +630,7 @@ async function cargarCestas() {
 
 async function cargarZonas() {
   try {
-    const res = await fetch(ZONAS_URL);
+    const res = await fetch(ZONAS_URL, { cache: 'no-store' });
     const data = await res.json();
     zonasEnvio = (data.documents || []).map(doc => {
       const f = doc.fields || {};
