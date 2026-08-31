@@ -268,6 +268,16 @@
 
   <h2 id="testimonios-titulo" style="color:var(--morado-oscuro); font-size:16px; margin-top:24px; margin-bottom:10px;">🎤 Customer voices</h2>
   <div id="testimonios-list-publico"></div>
+
+  <div style="background:#f5f0f7; border-radius:10px; padding:14px; margin-top:16px;">
+    <h3 id="testimonio-form-titulo" style="color:var(--morado-oscuro); font-size:14px; margin-bottom:10px;">Leave your testimonial</h3>
+    <input type="text" id="testimonio-nombre" class="order-input" placeholder="Your name (optional)" style="margin-bottom:8px;">
+    <textarea id="testimonio-mensaje" class="order-input" rows="3" placeholder="Write your message here..." style="margin-bottom:8px; resize:vertical;"></textarea>
+    <button id="btn-grabar-testimonio" onclick="iniciarGrabacion()" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--morado-claro); background:white; color:var(--morado-oscuro); font-size:13px; cursor:pointer; margin-bottom:8px;">🎙️ Record audio</button>
+    <audio id="preview-audio-testimonio" controls style="width:100%; display:none; margin-bottom:8px;"></audio>
+    <button id="btn-enviar-testimonio" onclick="enviarTestimonio()" style="width:100%; padding:10px; border-radius:8px; border:none; background:var(--amarillo); font-weight:bold; cursor:pointer;">Send</button>
+    <p id="testimonio-status" style="font-size:12px; color:var(--turquesa); margin-top:8px;"></p>
+  </div>
 </div>
 
 <div class="tab-content" id="tab-contact">
@@ -422,6 +432,17 @@ const UI_TEXT = {
     customerVoicesTitle: '🎤 Customer voices',
     shareAudio: '📤 Share this audio',
     audioLinkCopied: 'Audio link copied',
+    leaveTestimonial: 'Leave your testimonial',
+    testimonialNamePlaceholder: 'Your name (optional)',
+    testimonialMessagePlaceholder: 'Write your message here...',
+    recordAudio: '🎙️ Record audio',
+    stopRecording: '⏹️ Stop recording',
+    sendTestimonial: 'Send',
+    micError: 'Could not access the microphone',
+    testimonialEmpty: 'Write a message or record an audio.',
+    sendingTestimonial: 'Sending...',
+    testimonialSent: 'Thank you! Your testimonial will be reviewed before publishing.',
+    testimonialError: 'There was an error, please try again.',
     splashTagline: "Capture a smile<br>on your love one's face",
     splashButton: 'Discover your breakfast',
   },
@@ -451,6 +472,17 @@ const UI_TEXT = {
     customerVoicesTitle: '🎤 Voces de nuestros clientes',
     shareAudio: '📤 Compartir este audio',
     audioLinkCopied: 'Enlace del audio copiado',
+    leaveTestimonial: 'Deja tu testimonio',
+    testimonialNamePlaceholder: 'Tu nombre (opcional)',
+    testimonialMessagePlaceholder: 'Escribe tu mensaje aquí...',
+    recordAudio: '🎙️ Grabar audio',
+    stopRecording: '⏹️ Detener grabación',
+    sendTestimonial: 'Enviar',
+    micError: 'No se pudo acceder al micrófono',
+    testimonialEmpty: 'Escribe un mensaje o graba un audio.',
+    sendingTestimonial: 'Enviando...',
+    testimonialSent: '¡Gracias! Tu testimonio será revisado antes de publicarse.',
+    testimonialError: 'Hubo un error, intenta de nuevo.',
     splashTagline: 'Captura una sonrisa<br>en el rostro de tu ser querido',
     splashButton: 'Descubre tu desayuno',
   },
@@ -537,6 +569,13 @@ function aplicarTraduccionEstatica() {
   document.getElementById('splash-text').innerHTML = t.splashTagline;
   document.getElementById('splash-btn').textContent = t.splashButton;
   document.getElementById('testimonios-titulo').textContent = t.customerVoicesTitle;
+  document.getElementById('testimonio-form-titulo').textContent = t.leaveTestimonial;
+  document.getElementById('testimonio-nombre').placeholder = t.testimonialNamePlaceholder;
+  document.getElementById('testimonio-mensaje').placeholder = t.testimonialMessagePlaceholder;
+  if (!grabandoAudio) {
+    document.getElementById('btn-grabar-testimonio').textContent = t.recordAudio;
+  }
+  document.getElementById('btn-enviar-testimonio').textContent = t.sendTestimonial;
   renderTestimoniosPublico();
 
   renderTabs();
@@ -672,9 +711,12 @@ async function cargarTestimonios() {
       return {
         id: doc.name.split('/').pop(),
         audioUrl: f.audioUrl ? f.audioUrl.stringValue : '',
+        mensaje: f.mensaje ? f.mensaje.stringValue : '',
+        tipo: f.tipo ? f.tipo.stringValue : (f.audioUrl ? 'audio' : 'texto'),
         nombreCliente: f.nombreCliente ? f.nombreCliente.stringValue : '',
+        aprobado: f.aprobado ? f.aprobado.booleanValue : true,
       };
-    });
+    }).filter(t => t.aprobado);
   } catch (e) {
     testimoniosPublicos = [];
   }
@@ -694,10 +736,105 @@ function renderTestimoniosPublico() {
   cont.innerHTML = testimoniosPublicos.map(item => `
     <div style="background:#f5f0f7; border-radius:10px; padding:12px; margin-top:10px;">
       ${item.nombreCliente ? `<div style="font-size:13px; font-weight:bold; color:var(--morado-oscuro); margin-bottom:6px;">${item.nombreCliente}</div>` : ''}
-      <audio controls src="${item.audioUrl}" style="width:100%;"></audio>
-      <button style="margin-top:8px; width:100%; padding:8px; border-radius:8px; border:1px solid var(--morado-claro); background:white; color:var(--morado-oscuro); font-size:12px; cursor:pointer;" onclick="compartirAudioTestimonio('${item.audioUrl}')">${t.shareAudio}</button>
+      ${item.tipo === 'audio'
+        ? `<audio controls src="${item.audioUrl}" style="width:100%;"></audio>
+           <button style="margin-top:8px; width:100%; padding:8px; border-radius:8px; border:1px solid var(--morado-claro); background:white; color:var(--morado-oscuro); font-size:12px; cursor:pointer;" onclick="compartirAudioTestimonio('${item.audioUrl}')">${t.shareAudio}</button>`
+        : `<p style="font-size:14px; font-style:italic; color:#333;">"${item.mensaje}"</p>`}
     </div>
   `).join('');
+}
+
+let mediaRecorderTestimonio = null;
+let audioChunksTestimonio = [];
+let audioBlobTestimonio = null;
+let grabandoAudio = false;
+
+async function iniciarGrabacion() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorderTestimonio = new MediaRecorder(stream);
+    audioChunksTestimonio = [];
+
+    mediaRecorderTestimonio.ondataavailable = (e) => audioChunksTestimonio.push(e.data);
+    mediaRecorderTestimonio.onstop = () => {
+      audioBlobTestimonio = new Blob(audioChunksTestimonio, { type: 'audio/webm' });
+      const preview = document.getElementById('preview-audio-testimonio');
+      preview.src = URL.createObjectURL(audioBlobTestimonio);
+      preview.style.display = 'block';
+      stream.getTracks().forEach(tr => tr.stop());
+    };
+
+    mediaRecorderTestimonio.start();
+    grabandoAudio = true;
+    const btn = document.getElementById('btn-grabar-testimonio');
+    btn.textContent = UI_TEXT[idioma].stopRecording;
+    btn.onclick = detenerGrabacion;
+  } catch (e) {
+    alert(UI_TEXT[idioma].micError);
+  }
+}
+
+function detenerGrabacion() {
+  if (mediaRecorderTestimonio && mediaRecorderTestimonio.state !== 'inactive') {
+    mediaRecorderTestimonio.stop();
+  }
+  grabandoAudio = false;
+  const btn = document.getElementById('btn-grabar-testimonio');
+  btn.textContent = UI_TEXT[idioma].recordAudio;
+  btn.onclick = iniciarGrabacion;
+}
+
+async function enviarTestimonio() {
+  const t = UI_TEXT[idioma];
+  const nombreCliente = document.getElementById('testimonio-nombre').value.trim();
+  const mensaje = document.getElementById('testimonio-mensaje').value.trim();
+  const status = document.getElementById('testimonio-status');
+
+  if (!mensaje && !audioBlobTestimonio) {
+    status.textContent = t.testimonialEmpty;
+    return;
+  }
+
+  status.textContent = t.sendingTestimonial;
+
+  try {
+    let audioUrl = '';
+    if (audioBlobTestimonio) {
+      const formData = new FormData();
+      formData.append('file', audioBlobTestimonio, 'testimonio.webm');
+      formData.append('upload_preset', 'latin_delight_unsigned');
+      const cloudRes = await fetch('https://api.cloudinary.com/v1_1/iggcl810/video/upload', { method: 'POST', body: formData });
+      const cloudData = await cloudRes.json();
+      audioUrl = cloudData.secure_url || '';
+    }
+
+    const fields = {
+      aprobado: { booleanValue: false },
+      nombreCliente: { stringValue: nombreCliente },
+      fechaCreacion: { stringValue: new Date().toISOString() },
+    };
+    if (audioUrl) {
+      fields.audioUrl = { stringValue: audioUrl };
+      fields.tipo = { stringValue: 'audio' };
+    } else {
+      fields.mensaje = { stringValue: mensaje };
+      fields.tipo = { stringValue: 'texto' };
+    }
+
+    await fetch(TESTIMONIOS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields }),
+    });
+
+    status.textContent = t.testimonialSent;
+    document.getElementById('testimonio-nombre').value = '';
+    document.getElementById('testimonio-mensaje').value = '';
+    audioBlobTestimonio = null;
+    document.getElementById('preview-audio-testimonio').style.display = 'none';
+  } catch (e) {
+    status.textContent = t.testimonialError;
+  }
 }
 
 async function compartirAudioTestimonio(url) {
