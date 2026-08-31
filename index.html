@@ -102,21 +102,21 @@
     font-size: 10px; padding: 2px 7px; border-radius: 10px;
   }
 
-  #modal {
+  #modal, #cart-modal {
     display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6);
     z-index: 500; align-items: center; justify-content: center; padding: 16px;
   }
-  #modal.active { display: flex; }
-  #modal .content {
+  #modal.active, #cart-modal.active { display: flex; }
+  #modal .content, #cart-modal .content {
     background: white; border-radius: 14px; max-width: 480px; width: 100%;
     max-height: 90vh; overflow-y: auto; position: relative;
   }
-  #modal .close {
+  #modal .close, #cart-modal .close {
     position: absolute; top: 10px; right: 10px; background: white; border-radius: 50%;
     width: 32px; height: 32px; border: none; font-size: 18px; cursor: pointer; z-index: 60;
   }
-  #modal .body { padding: 16px; }
-  #modal .body h2 { color: var(--morado-oscuro); margin-bottom: 6px; }
+  #modal .body, #cart-modal .body { padding: 16px; }
+  #modal .body h2, #cart-modal .body h2 { color: var(--morado-oscuro); margin-bottom: 6px; }
   #modal .body .price { font-size: 20px; color: var(--turquesa); font-weight: bold; margin-bottom: 12px; }
   #modal .subtab-content {
     font-size: 14px; line-height: 1.6;
@@ -220,6 +220,34 @@
   .content-list {
     margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.7; color: #333;
   }
+
+  .cart-item {
+    display: flex; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee;
+  }
+  .cart-item img { width: 54px; height: 54px; object-fit: cover; border-radius: 8px; flex-shrink: 0; }
+  .cart-item .cart-item-info { flex: 1; min-width: 0; }
+  .cart-item .cart-item-name { font-size: 13px; font-weight: bold; color: var(--morado-oscuro); }
+  .cart-item .cart-item-price { font-size: 12px; color: var(--turquesa); margin-top: 2px; }
+  .cart-item .cart-qty-controls { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .cart-item .cart-qty-controls button {
+    width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--morado-claro);
+    background: white; color: var(--morado-oscuro); font-size: 14px; cursor: pointer; line-height: 1;
+  }
+  .cart-item .cart-remove-btn {
+    background: none; border: none; color: #c0392b; font-size: 18px; cursor: pointer; flex-shrink: 0;
+  }
+  .cart-add-btn {
+    display: block; width: 100%; text-align: center; margin-top: 10px; padding: 12px;
+    background: var(--turquesa); color: white; border-radius: 10px; text-decoration: none; font-weight: bold;
+    border: none; font-size: 15px; cursor: pointer;
+  }
+  .cart-add-btn:disabled { background: #ccc; color: #888; cursor: not-allowed; }
+  #cart-locked-notice {
+    display: none; font-size: 12px; color: #c0392b; margin-top: 6px; text-align: center;
+  }
+  #cart-add-feedback {
+    display: none; font-size: 12px; color: var(--turquesa); margin-top: 6px; text-align: center; font-weight: bold;
+  }
 </style>
 </head>
 <body>
@@ -242,6 +270,7 @@
   </div>
   <div class="actions">
     <button id="btn-idioma" style="display:none" onclick="toggleIdioma()">EN / ES</button>
+    <button id="btn-cart" onclick="abrirCarrito()" style="position:relative;">🛒<span id="cart-badge" style="display:none; position:absolute; top:-6px; right:-6px; background:var(--amarillo); color:#333; border-radius:50%; width:18px; height:18px; font-size:11px; font-weight:bold; align-items:center; justify-content:center;"></span></button>
     <button id="btn-share" onclick="compartir()">Share</button>
   </div>
 </header>
@@ -335,7 +364,37 @@
         <ol class="content-list" id="content-list"></ol>
       </div>
 
+      <button class="cart-add-btn" id="btn-add-carrito" onclick="agregarAlCarritoDesdeModal()">🛒 Add to cart</button>
+      <div id="cart-locked-notice">Add a product from another category first to unlock Extras.</div>
+      <div id="cart-add-feedback">Added to cart ✓</div>
+
       <button class="whatsapp-btn" id="btn-order-whatsapp" onclick="enviarPedidoWhatsApp()">Order on WhatsApp</button>
+    </div>
+  </div>
+</div>
+
+<div id="cart-modal">
+  <div class="content">
+    <button class="close" onclick="cerrarCarrito()">&times;</button>
+    <div class="body">
+      <h2 id="cart-title">🛒 Your cart</h2>
+      <div id="cart-empty-msg" style="color:#999; font-size:14px; padding:20px 0; text-align:center;">Your cart is empty.</div>
+      <div id="cart-items-list"></div>
+
+      <div id="cart-delivery-section" style="display:none; margin-top:16px; padding-top:14px; border-top:1px solid #eee;">
+        <div class="order-field-label" id="cart-label-delivery-date">📅 Delivery date</div>
+        <input type="date" id="cart-delivery-date" class="order-input">
+
+        <div class="order-field-label" id="cart-label-delivery-time">🕒 Delivery time</div>
+        <select id="cart-delivery-time" class="order-input"></select>
+
+        <div class="order-field-label" id="cart-label-zona" style="display:none">📍 Delivery zone</div>
+        <select id="cart-delivery-zone" class="order-input" style="display:none" onchange="actualizarTotalCarrito()"></select>
+
+        <div id="cart-total-box" style="margin-top:14px; font-size:15px; font-weight:bold; color:var(--morado-oscuro);"></div>
+
+        <button class="whatsapp-btn" id="btn-cart-whatsapp" onclick="enviarCarritoWhatsApp()" style="margin-top:14px;">Send order on WhatsApp</button>
+      </div>
     </div>
   </div>
 </div>
@@ -445,6 +504,13 @@ const UI_TEXT = {
     testimonialError: 'There was an error, please try again.',
     splashTagline: "Capture a smile<br>on your love one's face",
     splashButton: 'Discover your breakfast',
+    cartTitle: '🛒 Your cart',
+    cartEmpty: 'Your cart is empty.',
+    addToCart: '🛒 Add to cart',
+    addedToCart: 'Added to cart ✓',
+    cartLocked: 'Add a product from another category first to unlock Extras.',
+    sendCartWhatsapp: 'Send order on WhatsApp',
+    remove: 'Remove',
   },
   es: {
     share: 'Compartir',
@@ -485,6 +551,13 @@ const UI_TEXT = {
     testimonialError: 'Hubo un error, intenta de nuevo.',
     splashTagline: 'Captura una sonrisa<br>en el rostro de tu ser querido',
     splashButton: 'Descubre tu desayuno',
+    cartTitle: '🛒 Tu carrito',
+    cartEmpty: 'Tu carrito está vacío.',
+    addToCart: '🛒 Agregar al carrito',
+    addedToCart: 'Agregado al carrito ✓',
+    cartLocked: 'Agrega primero un producto de otra categoría para desbloquear Adicionales.',
+    sendCartWhatsapp: 'Enviar pedido por WhatsApp',
+    remove: 'Quitar',
   },
 };
 
@@ -496,6 +569,8 @@ let testimoniosPublicos = [];
 let categoriaActiva = null;
 let ocasionActiva = null;
 let tabActiva = 'Desayuno sorpresa';
+let carrito = [];
+const CATEGORIA_ADICIONALES = 'Adicionales';
 
 document.getElementById('year').textContent = new Date().getFullYear();
 
@@ -576,6 +651,8 @@ function aplicarTraduccionEstatica() {
     document.getElementById('btn-grabar-testimonio').textContent = t.recordAudio;
   }
   document.getElementById('btn-enviar-testimonio').textContent = t.sendTestimonial;
+  document.getElementById('btn-add-carrito').textContent = t.addToCart;
+  document.getElementById('cart-locked-notice').textContent = t.cartLocked;
   renderTestimoniosPublico();
 
   renderTabs();
@@ -990,6 +1067,8 @@ function abrirModal(id) {
   document.getElementById('delivery-zone').value = '';
   document.getElementById('delivery-total-box').textContent = '';
 
+  actualizarBotonCarritoEnModal();
+
   aplicarTraduccionEstatica();
 
   document.getElementById('modal').classList.add('active');
@@ -1233,6 +1312,244 @@ function enviarPedidoWhatsApp() {
 
   const mensaje = encodeURIComponent(lineas.join('\n'));
   window.open(`https://wa.me/${numero}?text=${mensaje}`, '_blank');
+}
+
+// ---- Carrito de compras ----
+
+function hayOtraCategoriaEnCarrito() {
+  return carrito.some(item => item.categoria !== CATEGORIA_ADICIONALES);
+}
+
+function actualizarBotonCarritoEnModal() {
+  const btn = document.getElementById('btn-add-carrito');
+  const aviso = document.getElementById('cart-locked-notice');
+  const feedback = document.getElementById('cart-add-feedback');
+  feedback.style.display = 'none';
+
+  if (!cestaActual) return;
+
+  const bloqueado = cestaActual.categoria === CATEGORIA_ADICIONALES && !hayOtraCategoriaEnCarrito();
+  btn.disabled = bloqueado;
+  aviso.style.display = bloqueado ? 'block' : 'none';
+}
+
+function agregarAlCarritoDesdeModal() {
+  if (!cestaActual) return;
+  const bloqueado = cestaActual.categoria === CATEGORIA_ADICIONALES && !hayOtraCategoriaEnCarrito();
+  if (bloqueado) return;
+
+  const existente = carrito.find(item => item.id === cestaActual.id);
+  if (existente) {
+    existente.cantidad += 1;
+  } else {
+    const portada = cestaActual.fotos[0] || 'assets/icon/Logo.png';
+    carrito.push({
+      id: cestaActual.id,
+      nombre: cestaActual.nombre,
+      nombreEs: cestaActual.nombreEs,
+      categoria: cestaActual.categoria,
+      precioVenta: cestaActual.precioVenta,
+      imagen: esVideo(portada) ? miniaturaDeVideo(portada) : portada,
+      cantidad: 1,
+    });
+  }
+
+  renderCartBadge();
+
+  const feedback = document.getElementById('cart-add-feedback');
+  feedback.textContent = UI_TEXT[idioma].addedToCart;
+  feedback.style.display = 'block';
+  setTimeout(() => { feedback.style.display = 'none'; }, 1800);
+}
+
+function renderCartBadge() {
+  const badge = document.getElementById('cart-badge');
+  const totalUnidades = carrito.reduce((sum, item) => sum + item.cantidad, 0);
+  if (totalUnidades > 0) {
+    badge.textContent = totalUnidades;
+    badge.style.display = 'flex';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function abrirCarrito() {
+  renderCarritoLista();
+
+  const seccionEntrega = document.getElementById('cart-delivery-section');
+  seccionEntrega.style.display = carrito.length > 0 ? 'block' : 'none';
+
+  if (carrito.length > 0) {
+    document.getElementById('cart-delivery-date').value = '';
+    document.getElementById('cart-delivery-date').min = fechaMinimaEntrega();
+    renderCartTimeSlots();
+    document.getElementById('cart-delivery-time').value = '';
+
+    const esUK = mercado === 'UK';
+    document.getElementById('cart-label-zona').style.display = esUK ? 'block' : 'none';
+    document.getElementById('cart-delivery-zone').style.display = esUK ? 'block' : 'none';
+    renderCartZoneSelect();
+    document.getElementById('cart-delivery-zone').value = '';
+    actualizarTotalCarrito();
+  }
+
+  aplicarTraduccionCarrito();
+  document.getElementById('cart-modal').classList.add('active');
+}
+
+function cerrarCarrito() {
+  document.getElementById('cart-modal').classList.remove('active');
+}
+
+function aplicarTraduccionCarrito() {
+  const t = UI_TEXT[idioma];
+  document.getElementById('cart-title').textContent = t.cartTitle;
+  document.getElementById('cart-empty-msg').textContent = t.cartEmpty;
+  document.getElementById('cart-label-delivery-date').textContent = t.deliveryDate;
+  document.getElementById('cart-label-delivery-time').textContent = t.deliveryTime;
+  document.getElementById('cart-label-zona').textContent = t.deliveryZone;
+  document.getElementById('btn-cart-whatsapp').textContent = t.sendCartWhatsapp;
+  document.getElementById('btn-add-carrito').textContent = t.addToCart;
+  document.getElementById('cart-locked-notice').textContent = t.cartLocked;
+}
+
+function renderCarritoLista() {
+  const cont = document.getElementById('cart-items-list');
+  const emptyMsg = document.getElementById('cart-empty-msg');
+
+  if (carrito.length === 0) {
+    emptyMsg.style.display = 'block';
+    cont.innerHTML = '';
+    return;
+  }
+  emptyMsg.style.display = 'none';
+
+  const simbolo = SIMBOLO_MONEDA[mercado];
+
+  cont.innerHTML = carrito.map(item => `
+    <div class="cart-item">
+      <img src="${item.imagen}" alt="">
+      <div class="cart-item-info">
+        <div class="cart-item-name">${texto(item.nombre, item.nombreEs)}</div>
+        <div class="cart-item-price">${simbolo}${item.precioVenta.toFixed(2)} × ${item.cantidad} = ${simbolo}${(item.precioVenta * item.cantidad).toFixed(2)}</div>
+        <div class="cart-qty-controls">
+          <button onclick="cambiarCantidadCarrito('${item.id}', -1)">−</button>
+          <span>${item.cantidad}</span>
+          <button onclick="cambiarCantidadCarrito('${item.id}', 1)">+</button>
+        </div>
+      </div>
+      <button class="cart-remove-btn" onclick="quitarDelCarrito('${item.id}')" title="${UI_TEXT[idioma].remove}">🗑️</button>
+    </div>
+  `).join('');
+}
+
+function cambiarCantidadCarrito(id, delta) {
+  const item = carrito.find(x => x.id === id);
+  if (!item) return;
+  item.cantidad += delta;
+  if (item.cantidad <= 0) {
+    quitarDelCarrito(id);
+    return;
+  }
+  renderCartBadge();
+  renderCarritoLista();
+  actualizarTotalCarrito();
+}
+
+function quitarDelCarrito(id) {
+  carrito = carrito.filter(x => x.id !== id);
+  renderCartBadge();
+  renderCarritoLista();
+  const seccionEntrega = document.getElementById('cart-delivery-section');
+  seccionEntrega.style.display = carrito.length > 0 ? 'block' : 'none';
+  actualizarTotalCarrito();
+}
+
+function renderCartTimeSlots() {
+  const sel = document.getElementById('cart-delivery-time');
+  const t = UI_TEXT[idioma];
+  sel.innerHTML = `<option value="">${t.chooseTime}</option>` + FRANJAS_HORARIO.map(f =>
+    `<option value="${f}">${f}</option>`
+  ).join('');
+}
+
+function renderCartZoneSelect() {
+  const sel = document.getElementById('cart-delivery-zone');
+  const t = UI_TEXT[idioma];
+  sel.innerHTML = `<option value="">${t.chooseZone}</option>` + zonasEnvio.map(z =>
+    `<option value="${z.zona.replace(/"/g, '&quot;')}">${z.zona} — ${SIMBOLO_MONEDA[mercado]}${z.costo.toFixed(2)}</option>`
+  ).join('');
+}
+
+function subtotalCarrito() {
+  return carrito.reduce((sum, item) => sum + item.precioVenta * item.cantidad, 0);
+}
+
+function actualizarTotalCarrito() {
+  const box = document.getElementById('cart-total-box');
+  const t = UI_TEXT[idioma];
+  const simbolo = SIMBOLO_MONEDA[mercado];
+  const subtotal = subtotalCarrito();
+
+  const zonaNombre = document.getElementById('cart-delivery-zone').value;
+  const zona = zonasEnvio.find(z => z.zona === zonaNombre);
+  const costoEnvio = zona ? zona.costo : 0;
+  const total = subtotal + costoEnvio;
+
+  if (zona) {
+    box.textContent = `${t.deliveryCostLine}: ${simbolo}${costoEnvio.toFixed(2)} — ${t.totalLine}: ${simbolo}${total.toFixed(2)}`;
+  } else {
+    box.textContent = `${t.totalLine}: ${simbolo}${subtotal.toFixed(2)}`;
+  }
+}
+
+function enviarCarritoWhatsApp() {
+  if (carrito.length === 0) return;
+  const numero = NUMEROS[mercado];
+  const simbolo = SIMBOLO_MONEDA[mercado];
+
+  const lineas = [];
+  lineas.push(idioma === 'es' ? '¡Hola! Quiero hacer este pedido:' : "Hi! I'd like to place this order:");
+  lineas.push('');
+
+  carrito.forEach((item, i) => {
+    const nombre = texto(item.nombre, item.nombreEs);
+    lineas.push(`${i + 1}. *${nombre}* — ${item.cantidad} x ${simbolo}${item.precioVenta.toFixed(2)} = *${simbolo}${(item.precioVenta * item.cantidad).toFixed(2)}*`);
+  });
+
+  lineas.push('');
+
+  const subtotal = subtotalCarrito();
+  lineas.push(idioma === 'es' ? `Subtotal: *${simbolo}${subtotal.toFixed(2)}*` : `Subtotal: *${simbolo}${subtotal.toFixed(2)}*`);
+
+  const fecha = document.getElementById('cart-delivery-date').value;
+  const hora = document.getElementById('cart-delivery-time').value;
+  if (fecha) {
+    lineas.push(idioma === 'es' ? `Fecha de entrega: *${fecha}*` : `Delivery date: *${fecha}*`);
+  }
+  if (hora) {
+    lineas.push(idioma === 'es' ? `Hora de entrega: *${hora}*` : `Delivery time: *${hora}*`);
+  }
+
+  const zonaNombre = document.getElementById('cart-delivery-zone').value;
+  const zona = zonasEnvio.find(z => z.zona === zonaNombre);
+  let total = subtotal;
+  if (zona) {
+    total += zona.costo;
+    lineas.push(idioma === 'es' ? `Zona de entrega: *${zonaNombre}*` : `Delivery zone: *${zonaNombre}*`);
+    lineas.push(idioma === 'es'
+      ? `Costo de domicilio: *${simbolo}${zona.costo.toFixed(2)}*`
+      : `Delivery cost: *${simbolo}${zona.costo.toFixed(2)}*`);
+  }
+
+  lineas.push(idioma === 'es' ? `Total: *${simbolo}${total.toFixed(2)}*` : `Total: *${simbolo}${total.toFixed(2)}*`);
+
+  const mensaje = encodeURIComponent(lineas.join('\n'));
+  window.open(`https://wa.me/${numero}?text=${mensaje}`, '_blank');
+
+  carrito = [];
+  renderCartBadge();
+  cerrarCarrito();
 }
 
 async function compartir() {
