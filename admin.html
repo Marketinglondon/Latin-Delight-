@@ -809,7 +809,10 @@ async function cargarTestimonios() {
     return {
       id: doc.name.split('/').pop(),
       audioUrl: f.audioUrl ? f.audioUrl.stringValue : '',
+      mensaje: f.mensaje ? f.mensaje.stringValue : '',
+      tipo: f.tipo ? f.tipo.stringValue : (f.audioUrl ? 'audio' : 'texto'),
       nombreCliente: f.nombreCliente ? f.nombreCliente.stringValue : '',
+      aprobado: f.aprobado ? f.aprobado.booleanValue : true,
     };
   });
   renderTestimonios();
@@ -817,19 +820,56 @@ async function cargarTestimonios() {
 
 function renderTestimonios() {
   const cont = document.getElementById('testimonios-lista');
-  if (testimoniosCache.length === 0) {
-    cont.innerHTML = '<p style="color:#999; font-size:13px; margin-top:8px;">Sin audios todavía.</p>';
-    return;
-  }
-  cont.innerHTML = testimoniosCache.map(t => `
-    <div style="background:white; border-radius:8px; padding:10px; margin-top:8px; display:flex; align-items:center; gap:10px;">
-      <div style="flex:1;">
+  const pendientes = testimoniosCache.filter(t => !t.aprobado);
+  const aprobados = testimoniosCache.filter(t => t.aprobado);
+
+  let html = '';
+
+  if (pendientes.length > 0) {
+    html += `<h3 style="font-size:13px; color:#c0392b; margin-top:14px; margin-bottom:6px;">Pendientes de aprobación (${pendientes.length})</h3>`;
+    html += pendientes.map(t => `
+      <div style="background:#fff8f0; border:1px solid #f0d9b5; border-radius:8px; padding:10px; margin-top:8px;">
         ${t.nombreCliente ? `<div style="font-size:12px; font-weight:bold; color:var(--morado-oscuro); margin-bottom:4px;">${t.nombreCliente}</div>` : ''}
-        <audio controls src="${t.audioUrl}" style="width:100%; height:36px;"></audio>
+        ${t.tipo === 'audio'
+          ? `<audio controls src="${t.audioUrl}" style="width:100%; height:36px;"></audio>`
+          : `<p style="font-size:13px; font-style:italic; color:#333;">"${t.mensaje}"</p>`}
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <button style="flex:1; padding:6px; background:var(--turquesa); color:white; border:none; border-radius:6px; cursor:pointer; font-size:12px;" onclick="aprobarTestimonio('${t.id}')">✅ Aprobar</button>
+          <button onclick="eliminarTestimonio('${t.id}')">🗑️</button>
+        </div>
       </div>
-      <button onclick="eliminarTestimonio('${t.id}')">🗑️</button>
-    </div>
-  `).join('');
+    `).join('');
+  }
+
+  html += `<h3 style="font-size:13px; color:var(--morado-oscuro); margin-top:14px; margin-bottom:6px;">Publicados</h3>`;
+
+  if (aprobados.length === 0) {
+    html += '<p style="color:#999; font-size:13px;">Sin audios todavía.</p>';
+  } else {
+    html += aprobados.map(t => `
+      <div style="background:white; border-radius:8px; padding:10px; margin-top:8px; display:flex; align-items:center; gap:10px;">
+        <div style="flex:1;">
+          ${t.nombreCliente ? `<div style="font-size:12px; font-weight:bold; color:var(--morado-oscuro); margin-bottom:4px;">${t.nombreCliente}</div>` : ''}
+          ${t.tipo === 'audio'
+            ? `<audio controls src="${t.audioUrl}" style="width:100%; height:36px;"></audio>`
+            : `<p style="font-size:13px; font-style:italic; color:#333;">"${t.mensaje}"</p>`}
+        </div>
+        <button onclick="eliminarTestimonio('${t.id}')">🗑️</button>
+      </div>
+    `).join('');
+  }
+
+  cont.innerHTML = html;
+}
+
+async function aprobarTestimonio(id) {
+  const headers = await obtenerHeaders();
+  await fetch(`${TESTIMONIOS_URL}/${id}?updateMask.fieldPaths=aprobado`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify({ fields: { aprobado: { booleanValue: true } } }),
+  });
+  await cargarTestimonios();
 }
 
 async function subirTestimonioAudio(event) {
@@ -856,7 +896,9 @@ async function subirTestimonioAudio(event) {
         body: JSON.stringify({
           fields: {
             audioUrl: { stringValue: data.secure_url },
+            tipo: { stringValue: 'audio' },
             nombreCliente: { stringValue: nombreCliente },
+            aprobado: { booleanValue: true },
             fechaCreacion: { stringValue: new Date().toISOString() },
           },
         }),
