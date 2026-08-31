@@ -890,7 +890,7 @@ async function subirTestimonioAudio(event) {
 
     if (data.secure_url) {
       const headers = await obtenerHeaders();
-      await fetch(TESTIMONIOS_URL, {
+      const guardado = await fetch(TESTIMONIOS_URL, {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -903,6 +903,11 @@ async function subirTestimonioAudio(event) {
           },
         }),
       });
+      if (!guardado.ok) {
+        const errorData = await guardado.json().catch(() => ({}));
+        alert('No se pudo guardar el audio en la base de datos: ' + (errorData.error?.message || guardado.status));
+        return;
+      }
       status.textContent = 'Audio agregado.';
       await cargarTestimonios();
     } else {
