@@ -183,6 +183,15 @@
       <tbody id="zonas-tabla-body"></tbody>
     </table>
   </div>
+
+  <div id="testimonios-seccion" style="margin-top: 30px;">
+    <h2 style="color: var(--morado-oscuro); margin-bottom: 12px; font-size: 16px;">Voces de nuestros clientes</h2>
+    <div class="toolbar">
+      <button class="btn-primary" onclick="document.getElementById('audio-input').click()">🎤+ Agregar audio</button>
+    </div>
+    <input type="file" id="audio-input" accept="audio/*" style="display:none" onchange="subirTestimonioAudio(event)">
+    <div id="testimonios-lista"></div>
+  </div>
 </main>
 
 <div id="zona-form-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:500; padding:16px;">
@@ -285,6 +294,7 @@ const CODIGO_ACCESO = 'latindelight2026';
 const PROJECT_ID = 'latin-delight';
 const FIRESTORE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/cestas`;
 const ZONAS_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/zonasEnvio`;
+const TESTIMONIOS_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/testimonios`;
 
 const firebaseConfig = {
   apiKey: "AIzaSyBsnK8XDEYgISK2GCg3PwNtHbF34eq8pJY",
@@ -303,6 +313,7 @@ const CLOUDINARY_UPLOAD_URL_VIDEO = `https://api.cloudinary.com/v1_1/${CLOUDINAR
 let mercadoActivo = 'UK';
 let cestasCache = [];
 let zonasCache = [];
+let testimoniosCache = [];
 let fotosFormulario = [];
 
 const CATEGORIA_OCASIONES = {
@@ -345,6 +356,7 @@ async function verificarAcceso() {
     document.getElementById('gate').style.display = 'none';
     cargarCestas();
     cargarZonas();
+    cargarTestimonios();
   } catch (e) {
     alert('Error de autenticación: ' + e.message);
     console.error(e);
@@ -785,6 +797,87 @@ async function corregirOcasionesDesayuno() {
 
   status.textContent = 'Ocasiones de Desayuno sorpresa corregidas.';
   await cargarCestas();
+}
+
+// ---- Gestión de voces de clientes (testimonios en audio) ----
+
+async function cargarTestimonios() {
+  const res = await fetch(TESTIMONIOS_URL, { cache: 'no-store' });
+  const data = await res.json();
+  testimoniosCache = (data.documents || []).map(doc => {
+    const f = doc.fields || {};
+    return {
+      id: doc.name.split('/').pop(),
+      audioUrl: f.audioUrl ? f.audioUrl.stringValue : '',
+      nombreCliente: f.nombreCliente ? f.nombreCliente.stringValue : '',
+    };
+  });
+  renderTestimonios();
+}
+
+function renderTestimonios() {
+  const cont = document.getElementById('testimonios-lista');
+  if (testimoniosCache.length === 0) {
+    cont.innerHTML = '<p style="color:#999; font-size:13px; margin-top:8px;">Sin audios todavía.</p>';
+    return;
+  }
+  cont.innerHTML = testimoniosCache.map(t => `
+    <div style="background:white; border-radius:8px; padding:10px; margin-top:8px; display:flex; align-items:center; gap:10px;">
+      <div style="flex:1;">
+        ${t.nombreCliente ? `<div style="font-size:12px; font-weight:bold; color:var(--morado-oscuro); margin-bottom:4px;">${t.nombreCliente}</div>` : ''}
+        <audio controls src="${t.audioUrl}" style="width:100%; height:36px;"></audio>
+      </div>
+      <button onclick="eliminarTestimonio('${t.id}')">🗑️</button>
+    </div>
+  `).join('');
+}
+
+async function subirTestimonioAudio(event) {
+  const archivo = event.target.files[0];
+  if (!archivo) return;
+
+  const nombreCliente = prompt('Nombre del cliente (opcional):') || '';
+  const status = document.getElementById('status');
+  status.textContent = 'Subiendo audio...';
+
+  try {
+    const formData = new FormData();
+    formData.append('file', archivo);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+    const res = await fetch(CLOUDINARY_UPLOAD_URL_VIDEO, { method: 'POST', body: formData });
+    const data = await res.json();
+
+    if (data.secure_url) {
+      const headers = await obtenerHeaders();
+      await fetch(TESTIMONIOS_URL, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          fields: {
+            audioUrl: { stringValue: data.secure_url },
+            nombreCliente: { stringValue: nombreCliente },
+            fechaCreacion: { stringValue: new Date().toISOString() },
+          },
+        }),
+      });
+      status.textContent = 'Audio agregado.';
+      await cargarTestimonios();
+    } else {
+      alert('No se pudo subir el audio: ' + (data.error?.message || 'error desconocido'));
+    }
+  } catch (e) {
+    alert('Error subiendo audio: ' + e.message);
+  }
+
+  event.target.value = '';
+}
+
+async function eliminarTestimonio(id) {
+  if (!confirm('¿Eliminar este audio?')) return;
+  const headers = await obtenerHeaders();
+  await fetch(`${TESTIMONIOS_URL}/${id}`, { method: 'DELETE', headers });
+  await cargarTestimonios();
 }
 
 // ---- Gestión de zonas de envío ----
