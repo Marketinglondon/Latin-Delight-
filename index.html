@@ -369,7 +369,7 @@ const CATEGORIAS_ORDEN = ['Desayuno sorpresa', 'Frutas expresiva', 'Rosas', 'Det
 
 const CATEGORIA_OCASIONES = {
   'Desayuno sorpresa': ['Cumpleaños, aniversario y otros'],
-  'Frutas expresiva': ['Bandeja de frutas', 'Frutas y rosas', 'Fresas con chocolate', 'Fresas con rosas', 'Fresas con tortas'],
+  'Frutas expresiva': ['Bandeja de frutas', 'Frutas y rosas', 'Fresas con rosas', 'Fresas con tortas'],
   'Rosas': ['Caja de rosas', 'Buquet de rosas', 'Rosas con chocolate ferrero', 'Rosas con peluche'],
   'Detalles': ['Globos y peluches', 'Orquídeas y globos helio', 'Tabla de quesos'],
 };
@@ -798,8 +798,13 @@ async function enviarTestimonio() {
   status.textContent = t.sendingTestimonial;
 
   try {
+    // Si el cliente escribió un mensaje de texto, ese mensaje siempre tiene
+    // prioridad, aunque haya quedado una grabación de audio sin usar (por
+    // ejemplo si tocó "Grabar" por accidente y luego decidió escribir en
+    // vez de enviar el audio). Esto evita que se pierda el texto real del
+    // cliente y se guarde en su lugar un audio vacío/roto.
     let audioUrl = '';
-    if (audioBlobTestimonio) {
+    if (audioBlobTestimonio && !mensaje) {
       const formData = new FormData();
       formData.append('file', audioBlobTestimonio, 'testimonio.webm');
       formData.append('upload_preset', 'latin_delight_unsigned');
@@ -813,7 +818,10 @@ async function enviarTestimonio() {
       nombreCliente: { stringValue: nombreCliente },
       fechaCreacion: { stringValue: new Date().toISOString() },
     };
-    if (audioUrl) {
+    if (mensaje) {
+      fields.mensaje = { stringValue: mensaje };
+      fields.tipo = { stringValue: 'texto' };
+    } else if (audioUrl) {
       fields.audioUrl = { stringValue: audioUrl };
       fields.tipo = { stringValue: 'audio' };
     } else {
