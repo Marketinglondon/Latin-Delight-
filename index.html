@@ -44,6 +44,18 @@
     background: none; border: 1px solid var(--turquesa); color: var(--turquesa);
     border-radius: 20px; padding: 6px 12px; margin-left: 6px; cursor: pointer;
   }
+  header .actions {
+    display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 6px;
+  }
+  header .actions button { margin-left: 0; }
+  .social-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%; text-decoration: none;
+    font-size: 15px; color: white; flex-shrink: 0;
+  }
+  .social-btn.instagram { background: linear-gradient(45deg,#f58529,#dd2a7b,#8134af,#515bd4); }
+  .social-btn.facebook { background: #1877F2; font-weight: bold; font-family: Georgia, serif; }
+  .social-btn.tiktok { background: #000; }
 
   .location-banner {
     background: var(--morado-claro); text-align: center; padding: 8px 12px; font-size: 14px; color: var(--morado-oscuro);
@@ -269,6 +281,9 @@
     <h1>Latin Delight Ltd.</h1>
   </div>
   <div class="actions">
+    <a class="social-btn instagram" href="https://www.instagram.com/latin_delight_ltd?igsi=bHk2cGF4enB2NmU2&utm_source=qr" target="_blank" rel="noopener" aria-label="Instagram">📷</a>
+    <a class="social-btn facebook" href="https://www.facebook.com/share/1HEeGfesvL/?mibextid=wwXIfr" target="_blank" rel="noopener" aria-label="Facebook">f</a>
+    <a class="social-btn tiktok" href="https://www.tiktok.com/@samimaso2602?_r=1&_t=ZN-99LXamB5Rdm" target="_blank" rel="noopener" aria-label="TikTok">🎵</a>
     <button id="btn-idioma" style="display:none" onclick="toggleIdioma()">EN / ES</button>
     <button id="btn-cart" onclick="abrirCarrito()" style="position:relative;">🛒<span id="cart-badge" style="display:none; position:absolute; top:-6px; right:-6px; background:var(--amarillo); color:#333; border-radius:50%; width:18px; height:18px; font-size:11px; font-weight:bold; align-items:center; justify-content:center;"></span></button>
     <button id="btn-share" onclick="compartir()">Share</button>
@@ -1596,4 +1611,4 @@ async function compartir() {
 })();
 </script>
 </body>
-</html>
+  </html>
