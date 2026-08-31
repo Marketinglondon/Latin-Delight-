@@ -54,7 +54,7 @@
     font-size: 15px; color: white; flex-shrink: 0;
   }
   .social-btn.instagram { background: linear-gradient(45deg,#f58529,#dd2a7b,#8134af,#515bd4); }
-  .social-btn.facebook { background: #1877F2; font-weight: bold; font-family: Georgia, serif; }
+  .social-btn.facebook { background: #1877F2; }
   .social-btn.tiktok { background: #000; }
 
   .location-banner {
@@ -281,9 +281,15 @@
     <h1>Latin Delight Ltd.</h1>
   </div>
   <div class="actions">
-    <a class="social-btn instagram" href="https://www.instagram.com/latin_delight_ltd?igsi=bHk2cGF4enB2NmU2&utm_source=qr" target="_blank" rel="noopener" aria-label="Instagram">📷</a>
-    <a class="social-btn facebook" href="https://www.facebook.com/share/1HEeGfesvL/?mibextid=wwXIfr" target="_blank" rel="noopener" aria-label="Facebook">f</a>
-    <a class="social-btn tiktok" href="https://www.tiktok.com/@samimaso2602?_r=1&_t=ZN-99LXamB5Rdm" target="_blank" rel="noopener" aria-label="TikTok">🎵</a>
+    <a class="social-btn instagram" href="https://www.instagram.com/latin_delight_ltd?igsi=bHk2cGF4enB2NmU2&utm_source=qr" target="_blank" rel="noopener" aria-label="Instagram">
+      <svg viewBox="0 0 24 24" width="17" height="17"><rect x="2.5" y="2.5" width="19" height="19" rx="6" fill="none" stroke="white" stroke-width="2"/><circle cx="12" cy="12" r="5" fill="none" stroke="white" stroke-width="2"/><circle cx="17.8" cy="6.2" r="1.3" fill="white"/></svg>
+    </a>
+    <a class="social-btn facebook" href="https://www.facebook.com/share/1HEeGfesvL/?mibextid=wwXIfr" target="_blank" rel="noopener" aria-label="Facebook">
+      <svg viewBox="0 0 24 24" width="17" height="17"><path d="M15.5 8.5h-2c-.6 0-1 .4-1 1v2h3l-.4 3h-2.6v7h-3v-7H7.5v-3h2v-2.3C9.5 6.6 11 5 13.7 5c1.1 0 2 .1 2.3.1v2.9h-1.4c-1.1 0-1.3.5-1.3 1.3v1.7h2.6l-.4 3z" fill="white"/></svg>
+    </a>
+    <a class="social-btn tiktok" href="https://www.tiktok.com/@samimaso2602?_r=1&_t=ZN-99LXamB5Rdm" target="_blank" rel="noopener" aria-label="TikTok">
+      <svg viewBox="0 0 24 24" width="17" height="17"><path d="M15.3 3.5h2.4c.3 1.9 1.6 3.3 3.5 3.5v2.4c-1.3-.1-2.5-.5-3.5-1.3v6.3c0 3-2.4 5.4-5.4 5.4S6.9 17.4 6.9 14.4c0-3 2.4-5.4 5.4-5.4.3 0 .6 0 .9.1v2.5c-.3-.1-.6-.2-.9-.2-1.6 0-2.9 1.3-2.9 2.9s1.3 2.9 2.9 2.9 2.9-1.3 2.9-2.9V3.5z" fill="white"/></svg>
+    </a>
     <button id="btn-idioma" style="display:none" onclick="toggleIdioma()">EN / ES</button>
     <button id="btn-cart" onclick="abrirCarrito()" style="position:relative;">🛒<span id="cart-badge" style="display:none; position:absolute; top:-6px; right:-6px; background:var(--amarillo); color:#333; border-radius:50%; width:18px; height:18px; font-size:11px; font-weight:bold; align-items:center; justify-content:center;"></span></button>
     <button id="btn-share" onclick="compartir()">Share</button>
@@ -890,11 +896,6 @@ async function enviarTestimonio() {
   status.textContent = t.sendingTestimonial;
 
   try {
-    // Si el cliente escribió un mensaje de texto, ese mensaje siempre tiene
-    // prioridad, aunque haya quedado una grabación de audio sin usar (por
-    // ejemplo si tocó "Grabar" por accidente y luego decidió escribir en
-    // vez de enviar el audio). Esto evita que se pierda el texto real del
-    // cliente y se guarde en su lugar un audio vacío/roto.
     let audioUrl = '';
     if (audioBlobTestimonio && !mensaje) {
       const formData = new FormData();
@@ -1611,4 +1612,4 @@ async function compartir() {
 })();
 </script>
 </body>
-  </html>
+</html>
