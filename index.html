@@ -265,6 +265,9 @@
 
 <div class="tab-content" id="tab-about">
   <p id="about-text">Latin Delight Ltd. crafts gift baskets that combine balloons, flowers, decorative packaging and a variety of breakfast, snack, meal and drink options — sometimes with special decorative accessories included.</p>
+
+  <h2 id="testimonios-titulo" style="color:var(--morado-oscuro); font-size:16px; margin-top:24px; margin-bottom:10px;">🎤 Customer voices</h2>
+  <div id="testimonios-list-publico"></div>
 </div>
 
 <div class="tab-content" id="tab-contact">
@@ -341,6 +344,7 @@
 const PROJECT_ID = 'latin-delight';
 const FIRESTORE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/cestas`;
 const ZONAS_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/zonasEnvio`;
+const TESTIMONIOS_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/testimonios`;
 
 const NUMEROS = {
   UK: '447446830987',
@@ -415,6 +419,9 @@ const UI_TEXT = {
     totalLine: 'Total',
     included: "What's included",
     detailLabel: 'Detail',
+    customerVoicesTitle: '🎤 Customer voices',
+    shareAudio: '📤 Share this audio',
+    audioLinkCopied: 'Audio link copied',
     splashTagline: "Capture a smile<br>on your love one's face",
     splashButton: 'Discover your breakfast',
   },
@@ -441,6 +448,9 @@ const UI_TEXT = {
     totalLine: 'Total',
     included: 'Contenido',
     detailLabel: 'Detalle',
+    customerVoicesTitle: '🎤 Voces de nuestros clientes',
+    shareAudio: '📤 Compartir este audio',
+    audioLinkCopied: 'Enlace del audio copiado',
     splashTagline: 'Captura una sonrisa<br>en el rostro de tu ser querido',
     splashButton: 'Descubre tu desayuno',
   },
@@ -450,6 +460,7 @@ let mercado = 'UK';
 let idioma = 'en';
 let cestas = [];
 let zonasEnvio = [];
+let testimoniosPublicos = [];
 let categoriaActiva = null;
 let ocasionActiva = null;
 let tabActiva = 'Desayuno sorpresa';
@@ -525,6 +536,8 @@ function aplicarTraduccionEstatica() {
   document.getElementById('label-included').textContent = t.included;
   document.getElementById('splash-text').innerHTML = t.splashTagline;
   document.getElementById('splash-btn').textContent = t.splashButton;
+  document.getElementById('testimonios-titulo').textContent = t.customerVoicesTitle;
+  renderTestimoniosPublico();
 
   renderTabs();
 }
@@ -647,6 +660,67 @@ async function cargarZonas() {
     }).sort((a, b) => a.costo - b.costo || a.zona.localeCompare(b.zona));
   } catch (e) {
     zonasEnvio = [];
+  }
+}
+
+async function cargarTestimonios() {
+  try {
+    const res = await fetch(TESTIMONIOS_URL, { cache: 'no-store' });
+    const data = await res.json();
+    testimoniosPublicos = (data.documents || []).map(doc => {
+      const f = doc.fields || {};
+      return {
+        id: doc.name.split('/').pop(),
+        audioUrl: f.audioUrl ? f.audioUrl.stringValue : '',
+        nombreCliente: f.nombreCliente ? f.nombreCliente.stringValue : '',
+      };
+    });
+  } catch (e) {
+    testimoniosPublicos = [];
+  }
+  renderTestimoniosPublico();
+}
+
+function renderTestimoniosPublico() {
+  const cont = document.getElementById('testimonios-list-publico');
+  if (!cont) return;
+  const t = UI_TEXT[idioma];
+
+  if (testimoniosPublicos.length === 0) {
+    cont.innerHTML = '';
+    return;
+  }
+
+  cont.innerHTML = testimoniosPublicos.map(item => `
+    <div style="background:#f5f0f7; border-radius:10px; padding:12px; margin-top:10px;">
+      ${item.nombreCliente ? `<div style="font-size:13px; font-weight:bold; color:var(--morado-oscuro); margin-bottom:6px;">${item.nombreCliente}</div>` : ''}
+      <audio controls src="${item.audioUrl}" style="width:100%;"></audio>
+      <button style="margin-top:8px; width:100%; padding:8px; border-radius:8px; border:1px solid var(--morado-claro); background:white; color:var(--morado-oscuro); font-size:12px; cursor:pointer;" onclick="compartirAudioTestimonio('${item.audioUrl}')">${t.shareAudio}</button>
+    </div>
+  `).join('');
+}
+
+async function compartirAudioTestimonio(url) {
+  try {
+    const respuesta = await fetch(url);
+    const blob = await respuesta.blob();
+    const archivo = new File([blob], 'testimonio-latin-delight.mp3', { type: blob.type || 'audio/mpeg' });
+
+    if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
+      await navigator.share({ files: [archivo], title: 'Latin Delight Ltd.' });
+      return;
+    }
+    throw new Error('file-share-not-supported');
+  } catch (e) {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'Latin Delight Ltd.', url });
+        return;
+      } catch (e2) { /* el usuario canceló */ }
+    } else {
+      navigator.clipboard.writeText(url);
+      alert(UI_TEXT[idioma].audioLinkCopied);
+    }
   }
 }
 
@@ -1016,12 +1090,36 @@ function enviarPedidoWhatsApp() {
   window.open(`https://wa.me/${numero}?text=${mensaje}`, '_blank');
 }
 
-function compartir() {
-  if (navigator.share) {
-    navigator.share({ title: 'Latin Delight Ltd.', url: window.location.href });
-  } else {
-    navigator.clipboard.writeText(window.location.href);
-    alert(idioma === 'es' ? '¡Enlace copiado!' : 'Link copied!');
+async function compartir() {
+  const enlace = window.location.href;
+  const textoCompartir = idioma === 'es'
+    ? `Latin Delight Ltd. — Descubre nuestras cestas de regalo: ${enlace}`
+    : `Latin Delight Ltd. — Discover our gift baskets: ${enlace}`;
+
+  try {
+    const respuesta = await fetch('assets/icon/Logo.png');
+    const blob = await respuesta.blob();
+    const archivo = new File([blob], 'latin-delight-logo.png', { type: blob.type || 'image/png' });
+
+    if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
+      await navigator.share({
+        files: [archivo],
+        title: 'Latin Delight Ltd.',
+        text: textoCompartir,
+      });
+      return;
+    }
+    throw new Error('file-share-not-supported');
+  } catch (e) {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'Latin Delight Ltd.', text: textoCompartir, url: enlace });
+        return;
+      } catch (e2) { /* el usuario canceló */ }
+    } else {
+      navigator.clipboard.writeText(enlace);
+      alert(idioma === 'es' ? '¡Enlace copiado!' : 'Link copied!');
+    }
   }
 }
 
@@ -1031,6 +1129,7 @@ function compartir() {
   aplicarConfigMercado();
   await cargarCestas();
   await cargarZonas();
+  await cargarTestimonios();
   mostrarCategoria('Desayuno sorpresa');
 })();
 </script>
