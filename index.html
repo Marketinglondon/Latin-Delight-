@@ -260,6 +260,26 @@
   #cart-add-feedback {
     display: none; font-size: 12px; color: var(--turquesa); margin-top: 6px; text-align: center; font-weight: bold;
   }
+
+  .rating-summary-card {
+    border: 1px solid #eee; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    overflow: hidden; margin-bottom: 6px;
+  }
+  .rating-summary-topbar { height: 4px; background: var(--turquesa); }
+  .rating-summary-body { display: flex; gap: 16px; padding: 16px; align-items: flex-start; }
+  .rating-summary-avg { font-size: 36px; font-weight: bold; color: #222; flex-shrink: 0; }
+  .rating-summary-right { flex: 1; min-width: 0; }
+  .rating-summary-count { font-size: 14px; color: #333; margin-bottom: 10px; }
+  .rating-summary-count strong { color: var(--morado-oscuro); }
+  .rating-bar-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #555; margin-top: 4px; }
+  .rating-bar-row .star-label { width: 44px; flex-shrink: 0; }
+  .rating-bar-track { flex: 1; height: 8px; background: #eee; border-radius: 4px; overflow: hidden; }
+  .rating-bar-fill { height: 100%; background: var(--amarillo); }
+  .rating-bar-row .pct-label { width: 40px; text-align: right; flex-shrink: 0; }
+
+  .star-picker-star { cursor: pointer; color: #ddd; }
+  .star-picker-star.selected { color: var(--amarillo); }
+  .review-stars { color: var(--amarillo); font-size: 13px; margin-bottom: 4px; }
 </style>
 </head>
 <body>
@@ -317,11 +337,16 @@
   <p id="about-text">Latin Delight Ltd. crafts gift baskets that combine balloons, flowers, decorative packaging and a variety of breakfast, snack, meal and drink options — sometimes with special decorative accessories included.</p>
 
   <h2 id="testimonios-titulo" style="color:var(--morado-oscuro); font-size:16px; margin-top:24px; margin-bottom:10px;">🎤 Customer voices</h2>
+
+  <div id="rating-summary" style="display:none;"></div>
+
   <div id="testimonios-list-publico"></div>
 
   <div style="background:#f5f0f7; border-radius:10px; padding:14px; margin-top:16px;">
     <h3 id="testimonio-form-titulo" style="color:var(--morado-oscuro); font-size:14px; margin-bottom:10px;">Leave your testimonial</h3>
     <input type="text" id="testimonio-nombre" class="order-input" placeholder="Your name (optional)" style="margin-bottom:8px;">
+    <div id="star-rating-label" style="font-size:13px; font-weight:bold; color:var(--morado-oscuro); margin-bottom:6px;">Your rating</div>
+    <div id="star-rating-picker" style="font-size:26px; margin-bottom:10px; letter-spacing:4px;"></div>
     <textarea id="testimonio-mensaje" class="order-input" rows="3" placeholder="Write your message here..." style="margin-bottom:8px; resize:vertical;"></textarea>
     <button id="btn-grabar-testimonio" onclick="iniciarGrabacion()" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--morado-claro); background:white; color:var(--morado-oscuro); font-size:13px; cursor:pointer; margin-bottom:8px;">🎙️ Record audio</button>
     <audio id="preview-audio-testimonio" controls style="width:100%; display:none; margin-bottom:8px;"></audio>
@@ -532,6 +557,12 @@ const UI_TEXT = {
     cartLocked: 'Add a product from another category first to unlock Extras.',
     sendCartWhatsapp: 'Send order on WhatsApp',
     remove: 'Remove',
+    yourRating: 'Your rating',
+    ratingRequired: 'Please select a star rating.',
+    reviewsWord: 'Reviews',
+    andCounting: 'and counting',
+    starWord: 'star',
+    starsWord: 'stars',
   },
   es: {
     share: 'Compartir',
@@ -579,6 +610,12 @@ const UI_TEXT = {
     cartLocked: 'Agrega primero un producto de otra categoría para desbloquear Adicionales.',
     sendCartWhatsapp: 'Enviar pedido por WhatsApp',
     remove: 'Quitar',
+    yourRating: 'Tu calificación',
+    ratingRequired: 'Por favor elige una calificación en estrellas.',
+    reviewsWord: 'Reseñas',
+    andCounting: 'y contando',
+    starWord: 'estrella',
+    starsWord: 'estrellas',
   },
 };
 
@@ -674,6 +711,8 @@ function aplicarTraduccionEstatica() {
   document.getElementById('btn-enviar-testimonio').textContent = t.sendTestimonial;
   document.getElementById('btn-add-carrito').textContent = t.addToCart;
   document.getElementById('cart-locked-notice').textContent = t.cartLocked;
+  document.getElementById('star-rating-label').textContent = t.yourRating;
+  renderStarPicker();
   renderTestimoniosPublico();
 
   renderTabs();
@@ -813,6 +852,7 @@ async function cargarTestimonios() {
         tipo: f.tipo ? f.tipo.stringValue : (f.audioUrl ? 'audio' : 'texto'),
         nombreCliente: f.nombreCliente ? f.nombreCliente.stringValue : '',
         aprobado: f.aprobado ? f.aprobado.booleanValue : true,
+        calificacion: f.calificacion ? parseInt(f.calificacion.integerValue, 10) : 5,
       };
     }).filter(t => t.aprobado);
   } catch (e) {
@@ -821,10 +861,67 @@ async function cargarTestimonios() {
   renderTestimoniosPublico();
 }
 
+function renderEstrellas(cantidad) {
+  const llenas = '★'.repeat(cantidad);
+  const vacias = '☆'.repeat(5 - cantidad);
+  return llenas + vacias;
+}
+
+function renderRatingSummary() {
+  const cont = document.getElementById('rating-summary');
+  if (!cont) return;
+  const t = UI_TEXT[idioma];
+
+  const total = testimoniosPublicos.length;
+  if (total === 0) {
+    cont.style.display = 'none';
+    cont.innerHTML = '';
+    return;
+  }
+
+  const conteos = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+  let suma = 0;
+  testimoniosPublicos.forEach(item => {
+    const r = conteos.hasOwnProperty(item.calificacion) ? item.calificacion : 5;
+    conteos[r] += 1;
+    suma += r;
+  });
+  const promedio = suma / total;
+
+  const filas = [5, 4, 3, 2, 1].map(estrella => {
+    const cantidad = conteos[estrella];
+    const pct = total > 0 ? (cantidad / total) * 100 : 0;
+    const etiqueta = estrella === 1 ? t.starWord : t.starsWord;
+    return `
+      <div class="rating-bar-row">
+        <span class="star-label">${estrella} ${etiqueta}</span>
+        <span class="rating-bar-track"><span class="rating-bar-fill" style="width:${pct}%;"></span></span>
+        <span class="pct-label">${pct.toFixed(1)}%</span>
+      </div>
+    `;
+  }).join('');
+
+  cont.style.display = 'block';
+  cont.innerHTML = `
+    <div class="rating-summary-card">
+      <div class="rating-summary-topbar"></div>
+      <div class="rating-summary-body">
+        <div class="rating-summary-avg">${promedio.toFixed(1)}</div>
+        <div class="rating-summary-right">
+          <div class="rating-summary-count"><strong>${total.toLocaleString()} ${t.reviewsWord}</strong> ${t.andCounting}</div>
+          ${filas}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderTestimoniosPublico() {
   const cont = document.getElementById('testimonios-list-publico');
   if (!cont) return;
   const t = UI_TEXT[idioma];
+
+  renderRatingSummary();
 
   if (testimoniosPublicos.length === 0) {
     cont.innerHTML = '';
@@ -834,6 +931,7 @@ function renderTestimoniosPublico() {
   cont.innerHTML = testimoniosPublicos.map(item => `
     <div style="background:#f5f0f7; border-radius:10px; padding:12px; margin-top:10px;">
       ${item.nombreCliente ? `<div style="font-size:13px; font-weight:bold; color:var(--morado-oscuro); margin-bottom:6px;">${item.nombreCliente}</div>` : ''}
+      <div class="review-stars">${renderEstrellas(item.calificacion)}</div>
       ${item.tipo === 'audio'
         ? `<audio controls src="${item.audioUrl}" style="width:100%;"></audio>
            <button style="margin-top:8px; width:100%; padding:8px; border-radius:8px; border:1px solid var(--morado-claro); background:white; color:var(--morado-oscuro); font-size:12px; cursor:pointer;" onclick="compartirAudioTestimonio('${item.audioUrl}')">${t.shareAudio}</button>`
@@ -846,6 +944,20 @@ let mediaRecorderTestimonio = null;
 let audioChunksTestimonio = [];
 let audioBlobTestimonio = null;
 let grabandoAudio = false;
+let calificacionSeleccionada = 0;
+
+function renderStarPicker() {
+  const cont = document.getElementById('star-rating-picker');
+  if (!cont) return;
+  cont.innerHTML = [1, 2, 3, 4, 5].map(n => `
+    <span class="star-picker-star ${n <= calificacionSeleccionada ? 'selected' : ''}" onclick="elegirCalificacion(${n})">★</span>
+  `).join('');
+}
+
+function elegirCalificacion(n) {
+  calificacionSeleccionada = n;
+  renderStarPicker();
+}
 
 async function iniciarGrabacion() {
   try {
@@ -893,9 +1005,19 @@ async function enviarTestimonio() {
     return;
   }
 
+  if (calificacionSeleccionada === 0) {
+    status.textContent = t.ratingRequired;
+    return;
+  }
+
   status.textContent = t.sendingTestimonial;
 
   try {
+    // Si el cliente escribió un mensaje de texto, ese mensaje siempre tiene
+    // prioridad, aunque haya quedado una grabación de audio sin usar (por
+    // ejemplo si tocó "Grabar" por accidente y luego decidió escribir en
+    // vez de enviar el audio). Esto evita que se pierda el texto real del
+    // cliente y se guarde en su lugar un audio vacío/roto.
     let audioUrl = '';
     if (audioBlobTestimonio && !mensaje) {
       const formData = new FormData();
@@ -909,6 +1031,7 @@ async function enviarTestimonio() {
     const fields = {
       aprobado: { booleanValue: false },
       nombreCliente: { stringValue: nombreCliente },
+      calificacion: { integerValue: calificacionSeleccionada },
       fechaCreacion: { stringValue: new Date().toISOString() },
     };
     if (mensaje) {
@@ -933,6 +1056,8 @@ async function enviarTestimonio() {
     document.getElementById('testimonio-mensaje').value = '';
     audioBlobTestimonio = null;
     document.getElementById('preview-audio-testimonio').style.display = 'none';
+    calificacionSeleccionada = 0;
+    renderStarPicker();
   } catch (e) {
     status.textContent = t.testimonialError;
   }
