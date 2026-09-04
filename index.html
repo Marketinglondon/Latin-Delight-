@@ -101,7 +101,7 @@
     border: 1px solid #eee; border-radius: 12px; overflow: hidden; cursor: pointer;
     box-shadow: 0 2px 6px rgba(0,0,0,0.06); background: white;
   }
-  .card img { width: 100%; height: 130px; object-fit: cover; }
+  .card img { width: 100%; height: 130px; object-fit: contain; background: #f2f2f2; }
   .card .info { padding: 10px; }
   .card .info h3 { font-size: 14px; color: var(--morado-oscuro); margin-bottom: 4px; }
   .card .info .price { color: var(--turquesa); font-weight: bold; }
@@ -112,6 +112,14 @@
   .card .styles-badge {
     position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); color: white;
     font-size: 10px; padding: 2px 7px; border-radius: 10px;
+  }
+  .card.card-featured {
+    border: 3px solid #D4AF37; box-shadow: 0 2px 10px rgba(212,175,55,0.4);
+  }
+  .card .featured-star {
+    position: absolute; top: 8px; left: 8px; background: #D4AF37; color: white;
+    font-size: 12px; width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
   }
 
   #modal, #cart-modal {
@@ -480,6 +488,7 @@ const CATEGORIA_OCASIONES = {
 };
 
 const CATEGORIA_LABELS = {
+  'Temporada': { es: 'Temporada', en: 'Season' },
   'Desayuno sorpresa': { es: 'Desayuno sorpresa', en: 'Surprise Breakfast' },
   'Frutas expresiva': { es: 'Frutas expresiva', en: 'Expressive Fruits' },
   'Rosas': { es: 'Rosas', en: 'Roses' },
@@ -649,14 +658,25 @@ function cambiarMercadoManual() {
   idioma = IDIOMA_DEFECTO[mercado];
   localStorage.setItem('ld_idioma', idioma);
   aplicarConfigMercado();
-  cargarCestas();
+  cargarCestas().then(() => {
+    if (tabActiva !== 'about' && tabActiva !== 'contact') {
+      if (tabActiva === 'Temporada' && !cestas.some(c => c.temporada)) {
+        tabActiva = CATEGORIAS_ORDEN[0];
+      }
+      mostrarCategoria(tabActiva);
+    }
+    renderTabs();
+  });
 }
 
 function renderTabs() {
   const cont = document.getElementById('tabs-container');
   const t = UI_TEXT[idioma];
 
-  const catBtns = CATEGORIAS_ORDEN.map(cat => `
+  const hayTemporada = cestas.some(c => c.temporada);
+  const categoriasVisibles = hayTemporada ? ['Temporada', ...CATEGORIAS_ORDEN] : CATEGORIAS_ORDEN;
+
+  const catBtns = categoriasVisibles.map(cat => `
     <button class="tab-btn ${tabActiva === cat ? 'active' : ''}" data-tab="${cat}">${labelCategoria(cat)}</button>
   `).join('');
 
@@ -794,6 +814,8 @@ function parseFirestoreDoc(doc) {
     precioVenta: parseFloat(get('precioVenta', 'doubleValue') ?? get('precioVenta', 'integerValue') ?? 0),
     enStock: getBool('enStock'),
     fotos: getArray('fotos'),
+    temporada: getBool('temporada'),
+    estrella: getBool('estrella'),
   };
 }
 
@@ -1013,6 +1035,11 @@ async function enviarTestimonio() {
   status.textContent = t.sendingTestimonial;
 
   try {
+    // Si el cliente escribió un mensaje de texto, ese mensaje siempre tiene
+    // prioridad, aunque haya quedado una grabación de audio sin usar (por
+    // ejemplo si tocó "Grabar" por accidente y luego decidió escribir en
+    // vez de enviar el audio). Esto evita que se pierda el texto real del
+    // cliente y se guarde en su lugar un audio vacío/roto.
     let audioUrl = '';
     if (audioBlobTestimonio && !mensaje) {
       const formData = new FormData();
@@ -1127,10 +1154,15 @@ function volverAOcasiones() {
 
 function renderGrid() {
   const grid = document.getElementById('grid');
-  let filtradas = cestas.filter(c => c.categoria === categoriaActiva);
+  let filtradas;
 
-  if (ocasionActiva) {
-    filtradas = filtradas.filter(c => c.ocasion === ocasionActiva);
+  if (categoriaActiva === 'Temporada') {
+    filtradas = cestas.filter(c => c.temporada);
+  } else {
+    filtradas = cestas.filter(c => c.categoria === categoriaActiva);
+    if (ocasionActiva) {
+      filtradas = filtradas.filter(c => c.ocasion === ocasionActiva);
+    }
   }
 
   filtradas = filtradas.slice().sort((a, b) => b.precioVenta - a.precioVenta);
@@ -1151,9 +1183,10 @@ function renderGrid() {
   grid.innerHTML = filtradas.map(c => {
     const imagenPortada = carruselGridData[c.id].fotos[0];
     return `
-    <div class="card" onclick="abrirModal('${c.id}')">
+    <div class="card ${c.estrella ? 'card-featured' : ''}" onclick="abrirModal('${c.id}')">
       <img class="card-cover-img" data-product-id="${c.id}" src="${imagenPortada}" alt="${texto(c.nombre, c.nombreEs)}">
       ${c.fotos.length > 1 ? `<span class="styles-badge">${c.fotos.length} styles</span>` : ''}
+      ${c.estrella ? `<span class="featured-star">⭐</span>` : ''}
       <div class="info">
         <h3>${texto(c.nombre, c.nombreEs)}</h3>
         <div class="price">${SIMBOLO_MONEDA[mercado]}${c.precioVenta.toFixed(2)}</div>
@@ -1180,7 +1213,7 @@ function iniciarCarruselGrid() {
       data.index = (data.index + 1) % data.fotos.length;
       img.src = data.fotos[data.index];
     });
-  }, 1000);
+  }, 2000);
 }
 
 function detenerCarruselGrid() {
@@ -1241,6 +1274,7 @@ function abrirModal(id) {
   aplicarTraduccionEstatica();
 
   document.getElementById('modal').classList.add('active');
+  iniciarCarruselAuto();
 }
 
 function renderZoneSelect() {
@@ -1335,14 +1369,34 @@ function renderCarrusel() {
   dots.style.display = mostrarControles ? 'flex' : 'none';
 }
 
+let carruselAutoInterval = null;
+
+function iniciarCarruselAuto() {
+  detenerCarruselAuto();
+  if (carruselFotos.length <= 1) return;
+  carruselAutoInterval = setInterval(() => {
+    carruselIndex = (carruselIndex + 1) % carruselFotos.length;
+    renderCarrusel();
+  }, 2000);
+}
+
+function detenerCarruselAuto() {
+  if (carruselAutoInterval) {
+    clearInterval(carruselAutoInterval);
+    carruselAutoInterval = null;
+  }
+}
+
 function carruselMover(delta) {
   carruselIndex = (carruselIndex + delta + carruselFotos.length) % carruselFotos.length;
   renderCarrusel();
+  iniciarCarruselAuto();
 }
 
 function carruselIrA(i) {
   carruselIndex = i;
   renderCarrusel();
+  iniciarCarruselAuto();
 }
 
 function carruselTouchStart(e) {
@@ -1383,9 +1437,11 @@ function elegirImagen(index) {
   carruselIndex = index;
   renderCarrusel();
   renderImagePicker();
+  iniciarCarruselAuto();
 }
 
 function abrirLightbox(index) {
+  detenerCarruselAuto();
   carruselIndex = index;
   document.getElementById('lightbox-img').src = carruselFotos[index];
   document.getElementById('lightbox').classList.add('active');
@@ -1393,6 +1449,7 @@ function abrirLightbox(index) {
 
 function cerrarLightbox() {
   document.getElementById('lightbox').classList.remove('active');
+  iniciarCarruselAuto();
 }
 
 function cerrarLightboxSiFondo(e) {
@@ -1422,6 +1479,7 @@ async function compartirFotoActual() {
 
 function cerrarModal() {
   document.getElementById('modal').classList.remove('active');
+  detenerCarruselAuto();
 }
 
 function enviarPedidoWhatsApp() {
@@ -1759,10 +1817,11 @@ async function compartir() {
   renderTabs();
   aplicarConfigMercado();
   await cargarCestas();
+  renderTabs();
   await cargarZonas();
   await cargarTestimonios();
   mostrarCategoria('Desayuno sorpresa');
 })();
 </script>
 </body>
-  </html>
+</html>
