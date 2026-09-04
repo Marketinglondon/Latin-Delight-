@@ -268,7 +268,10 @@
       <label><input type="checkbox" id="f-comida"> Comida</label>
       <label><input type="checkbox" id="f-bebida"> Bebida</label>
       <label><input type="checkbox" id="f-stock" checked> En stock</label>
+      <label><input type="checkbox" id="f-temporada"> 🗓️ Temporada</label>
+      <label><input type="checkbox" id="f-estrella"> ⭐ Producto estrella</label>
     </div>
+    <div class="helper">🗓️ Temporada: aparece en una pestaña especial "Temporada" visible en la web solo cuando hay al menos un producto marcado así (de cualquier categoría). ⭐ Producto estrella: se resalta con borde dorado y una estrella en su tarjeta del catálogo.</div>
 
     <label id="label-precio">Precio de venta (£)</label>
     <input type="number" step="0.01" id="f-precio">
@@ -397,6 +400,7 @@ function parseDoc(doc) {
     pais: get('pais') || 'UK',
     costoProveedor: getNum('costoProveedor'), precioVenta: getNum('precioVenta'),
     enStock: getBool('enStock'), fotos: getArr('fotos'),
+    temporada: getBool('temporada'), estrella: getBool('estrella'),
   };
 }
 
@@ -417,6 +421,7 @@ function toFirestoreFields(c) {
     pais: str(c.pais),
     costoProveedor: num(c.costoProveedor), precioVenta: num(c.precioVenta),
     enStock: bool(c.enStock), fotos: arr(c.fotos),
+    temporada: bool(c.temporada), estrella: bool(c.estrella),
     fechaCreacion: str(c.fechaCreacion || new Date().toISOString()),
   };
 }
@@ -461,7 +466,7 @@ function renderTabla() {
     return `
     <tr>
       <td>${imgPortada ? `<img src="${imgPortada}">` : '—'}</td>
-      <td>${c.nombre}</td>
+      <td>${c.nombre} ${c.temporada ? '🗓️' : ''} ${c.estrella ? '⭐' : ''}</td>
       <td>${c.categoria}</td>
       <td>${simbolo}${c.precioVenta.toFixed(2)}</td>
       <td>${c.enStock ? '✅' : '❌'}</td>
@@ -569,7 +574,7 @@ function abrirFormulario() {
   document.getElementById('f-costo').value = '';
   document.getElementById('f-pais').value = mercadoActivo;
   document.getElementById('f-stock').checked = true;
-  ['f-globos','f-flores','f-accesorio','f-comida','f-bebida'].forEach(id => document.getElementById(id).checked = false);
+  ['f-globos','f-flores','f-accesorio','f-comida','f-bebida','f-temporada','f-estrella'].forEach(id => document.getElementById(id).checked = false);
   fotosFormulario = [];
   renderPhotoPicker();
   alCambiarPaisForm();
@@ -598,6 +603,8 @@ function editarCesta(id) {
   document.getElementById('f-accesorio').checked = c.incluyeAccesorio;
   document.getElementById('f-comida').checked = c.incluyeComida;
   document.getElementById('f-bebida').checked = c.incluyeBebida;
+  document.getElementById('f-temporada').checked = c.temporada;
+  document.getElementById('f-estrella').checked = c.estrella;
   document.getElementById('f-stock').checked = c.enStock;
   document.getElementById('f-precio').value = c.precioVenta;
   document.getElementById('f-costo').value = c.costoProveedor;
@@ -646,6 +653,8 @@ async function guardarCesta() {
     incluyeAccesorio: document.getElementById('f-accesorio').checked,
     incluyeComida: document.getElementById('f-comida').checked,
     incluyeBebida: document.getElementById('f-bebida').checked,
+    temporada: document.getElementById('f-temporada').checked,
+    estrella: document.getElementById('f-estrella').checked,
     pais: pais,
     costoProveedor: parseFloat(document.getElementById('f-costo').value) || 0,
     precioVenta: parseFloat(document.getElementById('f-precio').value) || 0,
