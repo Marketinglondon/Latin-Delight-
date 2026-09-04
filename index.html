@@ -1165,7 +1165,10 @@ function renderGrid() {
     }
   }
 
-  filtradas = filtradas.slice().sort((a, b) => b.precioVenta - a.precioVenta);
+  filtradas = filtradas.slice().sort((a, b) => {
+    if (a.estrella !== b.estrella) return a.estrella ? -1 : 1;
+    return b.precioVenta - a.precioVenta;
+  });
 
   if (filtradas.length === 0) {
     grid.innerHTML = `<p class="empty-category">${UI_TEXT[idioma].noBaskets}</p>`;
